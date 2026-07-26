@@ -1,0 +1,72 @@
+@{
+    ViewData["Title"] = "Teacher Dashboard";
+    Layout = "_DashboardLayout";
+}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-greeting">Xin chào trở lại 👋</div>
+    <h1 class="page-title" id="teacherGreeting">Giáo viên Dashboard</h1>
+    <div class="page-date" id="todayDate"></div>
+</div>
+
+<!-- Welcome Banner -->
+<div style="
+    background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1));
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+">
+    <div style="font-size: 2.5rem; flex-shrink: 0;">📋</div>
+    <div>
+        <div style="font-size: 1rem; font-weight: 700; color: #a5b4fc; margin-bottom: 4px;">Hệ thống Nhập điểm</div>
+        <div class="action-card-desc">Chào mừng bạn đến với cổng giáo viên. Nhập và quản lý điểm số học sinh theo lớp học phần của bạn.</div>
+    </div>
+</div>
+
+<!-- Action Cards -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <a href="/Teacher/MarkEntry" class="action-card ac-indigo" style="min-height: 180px;">
+            <div class="action-card-icon" style="font-size: 2.8rem;">📝</div>
+            <div class="action-card-label" style="font-size: 1.1rem;">Nhập điểm</div>
+            <div class="action-card-desc">Chọn lớp, sinh viên và nhập điểm theo cột điểm đã được phân công</div>
+        </a>
+    </div>
+    <div class="col-md-6">
+        <a href="/Teacher/Profile" class="action-card ac-emerald" style="min-height: 180px;">
+            <div class="action-card-icon" style="font-size: 2.8rem;">✏️</div>
+            <div class="action-card-label" style="font-size: 1.1rem;">Cập nhật thông tin</div>
+            <div class="action-card-desc">Chỉnh sửa thông tin cá nhân, số điện thoại và ảnh đại diện</div>
+        </a>
+    </div>
+</div>
+
+@section DashboardScripts {
+<script>
+    $(document).ready(function () {
+        const today = new Date();
+        $("#todayDate").text(
+            "Hôm nay: " +
+            String(today.getDate()).padStart(2, '0') + '/' +
+            String(today.getMonth() + 1).padStart(2, '0') + '/' +
+            today.getFullYear()
+        );
+
+        // Load teacher name
+        $.ajax({
+            url: apiUrl + "/Users/me",
+            type: "GET",
+            headers: { "Authorization": "Bearer " + localStorage.getItem("jwtToken") },
+            success: function (data) {
+                const name = ((data.lastName || '') + ' ' + (data.firstName || data.username)).trim();
+                if (name) $("#teacherGreeting").text("Xin chào, " + name + " 👋");
+            }
+        });
+    });
+</script>
+}

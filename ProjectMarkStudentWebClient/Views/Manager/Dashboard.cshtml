@@ -1,0 +1,73 @@
+@{
+    ViewData["Title"] = "Manager Dashboard";
+    Layout = "_DashboardLayout";
+}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-greeting">Xin chào trở lại 👋</div>
+    <h1 class="page-title">Manager Dashboard</h1>
+    <div class="page-date" id="todayDate"></div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <a href="/Manager/Students" class="action-card ac-indigo">
+            <div class="action-card-icon">🎓</div>
+            <div class="action-card-label">Sinh Viên</div>
+            <div class="action-card-desc">Quản lý danh sách học sinh</div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/Manager/Subjects" class="action-card ac-emerald">
+            <div class="action-card-icon">📚</div>
+            <div class="action-card-label">Môn học</div>
+            <div class="action-card-desc">Thêm, sửa, xoá môn học</div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/Manager/Courses" class="action-card ac-cyan">
+            <div class="action-card-icon">🏫</div>
+            <div class="action-card-label">Lớp Học</div>
+            <div class="action-card-desc">Quản lý các lớp học phần</div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/Manager/GradeItems" class="action-card ac-amber">
+            <div class="action-card-icon">📊</div>
+            <div class="action-card-label">Cột điểm</div>
+            <div class="action-card-desc">Cấu hình đầu điểm môn học</div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/Manager/Assign" class="action-card ac-rose">
+            <div class="action-card-icon">🔗</div>
+            <div class="action-card-label">Phân bổ</div>
+            <div class="action-card-desc">Giao lớp cho giáo viên</div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/Manager/MarkEntry" class="action-card ac-purple">
+            <div class="action-card-icon">📝</div>
+            <div class="action-card-label">Nhập điểm</div>
+            <div class="action-card-desc">Nhập và kiểm tra điểm số</div>
+        </a>
+    </div>
+</div>
+
+@section DashboardScripts {
+<script>
+    $(document).ready(function () {
+        const today = new Date();
+        $("#todayDate").text(
+            "Hôm nay: " +
+            String(today.getDate()).padStart(2, '0') + '/' +
+            String(today.getMonth() + 1).padStart(2, '0') + '/' +
+            today.getFullYear()
+        );
+    });
+</script>
+}
+
+

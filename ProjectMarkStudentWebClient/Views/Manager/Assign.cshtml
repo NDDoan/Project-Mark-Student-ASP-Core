@@ -1,0 +1,184 @@
+@{
+    ViewData["Title"] = "Phân bổ Sinh viên";
+    Layout = "_DashboardLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Phân bổ Sinh viên vào Lớp học</h2>
+</div>
+
+<div class="glass-panel p-3 mb-4">
+    <div class="row align-items-end mb-3">
+        <div class="col-md-5">
+            <label class="fw-bold">Chọn Lớp học:</label>
+            <select id="courseId" class="form-select" onchange="loadAssignedStudents()">
+                <option value="">-- Chọn Lớp --</option>
+            </select>
+        </div>
+        <div class="col-md-7 d-flex justify-content-end align-items-end gap-2">
+            <button class="btn btn-primary" onclick="showAssignModal()">
+                <i class="me-1">➕</i> Thêm Sinh viên vào lớp
+            </button>
+            <button class="btn btn-secondary" onclick="loadAssignedStudents()">
+                <i class="me-1">🔄</i> Làm mới
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="premium-table table table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Roll Number</th>
+                <th>Họ & Tên</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody id="assigned-table-body">
+            <tr>
+                <td colspan="4" class="text-center text-muted">Vui lòng chọn lớp học để xem danh sách sinh viên</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+@section Modals {
+<!-- Assign Student Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content glass-panel" style="background: var(--surface-color);">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title">Phân bổ Sinh viên</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label>Lớp học:</label>
+            <input type="text" id="displayCourseName" class="form-control" readonly />
+        </div>
+        <div class="mb-3">
+            <label>Chọn Sinh viên (*):</label>
+            <select id="studentId" class="form-select">
+                <option value="">-- Đang tải danh sách --</option>
+            </select>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="assignStudent()">Thêm vào lớp</button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+@section DashboardScripts {
+    <script>
+        let allStudents = [];
+
+        $(document).ready(function () {
+            loadCourses();
+            loadAllStudents();
+        });
+
+        function loadCourses() {
+            apiCall("GET", "/Courses", null, function (data) {
+                const sel = $("#courseId");
+                sel.empty();
+                sel.append('<option value="">-- Chọn Lớp --</option>');
+                data.forEach(c => {
+                    sel.append(`<option value="${c.courseId}">${c.title} (${c.subjectName})</option>`);
+                });
+            });
+        }
+
+        function loadAllStudents() {
+            apiCall("GET", "/Students", null, function (data) {
+                allStudents = data;
+                const sel = $("#studentId");
+                sel.empty();
+                sel.append('<option value="">-- Chọn Sinh viên --</option>');
+                data.forEach(s => {
+                    sel.append(`<option value="${s.id}">${s.rollNumber} - ${s.lastName || ""} ${s.firstName || ""}</option>`);
+                });
+            });
+        }
+
+        function loadAssignedStudents() {
+            const courseId = $("#courseId").val();
+            const tbody = $("#assigned-table-body");
+            
+            if (!courseId) {
+                tbody.html('<tr><td colspan="4" class="text-center text-muted">Vui lòng chọn lớp học để xem danh sách sinh viên</td></tr>');
+                return;
+            }
+
+            apiCall("GET", "/Courses/" + courseId + "/students", null, function (data) {
+                tbody.empty();
+                if (data.length === 0) {
+                    tbody.html('<tr><td colspan="4" class="text-center text-muted">Lớp học này chưa có sinh viên nào</td></tr>');
+                    return;
+                }
+
+                data.forEach(s => {
+                    const tr = $(`
+                        <tr>
+                            <td>${s.id}</td>
+                            <td>${s.rollNumber}</td>
+                            <td>${s.lastName || ""} ${s.firstName || ""}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" onclick="removeStudent(${s.id})">Xóa khỏi lớp</button>
+                            </td>
+                        </tr>
+                    `);
+                    tbody.append(tr);
+                });
+            });
+        }
+
+        function showAssignModal() {
+            const courseId = $("#courseId").val();
+            if (!courseId) {
+                alert("Vui lòng chọn Lớp học trước!");
+                return;
+            }
+            const courseName = $("#courseId option:selected").text();
+            $("#displayCourseName").val(courseName);
+            $("#studentId").val("");
+            $("#assignModal").modal("show");
+        }
+
+        function assignStudent() {
+            const courseId = parseInt($("#courseId").val());
+            const studentId = parseInt($("#studentId").val());
+
+            if (!studentId) {
+                alert("Vui lòng chọn Sinh viên!");
+                return;
+            }
+
+            const data = {
+                courseId: courseId,
+                studentId: studentId
+            };
+
+            apiCall("POST", "/Courses/" + courseId + "/students", data, function () {
+                $("#assignModal").modal("hide");
+                loadAssignedStudents();
+            }, function(err) {
+                alert(err.responseText || "Lỗi khi phân bổ sinh viên (Có thể sinh viên đã có trong lớp)");
+            });
+        }
+
+        function removeStudent(studentId) {
+            const courseId = $("#courseId").val();
+            if (confirm("Bạn có chắc muốn xóa sinh viên này khỏi lớp?")) {
+                apiCall("DELETE", "/Courses/" + courseId + "/students/" + studentId, null, function () {
+                    loadAssignedStudents();
+                });
+            }
+        }
+    </script>
+}

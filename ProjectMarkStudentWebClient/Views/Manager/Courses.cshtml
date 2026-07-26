@@ -1,0 +1,226 @@
+@{
+    ViewData["Title"] = "Quản lý Lớp học";
+    Layout = "_DashboardLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Quản lý Lớp học</h2>
+</div>
+
+<div class="glass-panel p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="showAddModal()">
+                <i class="me-1">➕</i> Thêm
+            </button>
+            <button class="btn btn-info text-white" onclick="showEditModal()">
+                <i class="me-1">✏️</i> Sửa
+            </button>
+            <button class="btn btn-danger" onclick="deleteSelected()">
+                <i class="me-1">🗑️</i> Xóa
+            </button>
+            <button class="btn btn-secondary" onclick="loadCourses()">
+                <i class="me-1">🔄</i> Làm mới
+            </button>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <input type="text" id="searchInput" class="form-control" placeholder="Tìm kiếm..." style="width: 250px;">
+            <button class="btn btn-primary" onclick="searchCourses()">🔍</button>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="premium-table table table-hover">
+        <thead>
+            <tr>
+                <th style="width: 40px;"></th>
+                <th>ID</th>
+                <th>Tên Lớp (Title)</th>
+                <th>Môn học</th>
+                <th>Giảng viên</th>
+            </tr>
+        </thead>
+        <tbody id="course-table-body">
+            <!-- Data will be loaded via AJAX -->
+        </tbody>
+    </table>
+</div>
+
+@section Modals {
+<!-- Add/Edit Course Modal -->
+<div class="modal fade" id="courseModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content glass-panel" style="background: var(--surface-color);">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="courseModalTitle">Thêm Lớp học</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="courseId" />
+        <div class="mb-3">
+            <label>Tên Lớp (*):</label>
+            <input type="text" id="title" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label>Môn học (*):</label>
+            <select id="subjectId" class="form-select"></select>
+        </div>
+        <div class="mb-3">
+            <label>Giảng viên:</label>
+            <select id="teacherId" class="form-select"></select>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="saveCourse()">Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+@section DashboardScripts {
+    <script>
+        let allCourses = [];
+        let selectedCourseId = null;
+
+        $(document).ready(function () {
+            loadCourses();
+            loadDropdowns();
+        });
+
+        function loadDropdowns() {
+            apiCall("GET", "/Subjects", null, function (data) {
+                const sel = $("#subjectId");
+                sel.empty();
+                sel.append('<option value="">-- Chọn Môn học --</option>');
+                data.forEach(s => {
+                    sel.append(`<option value="${s.subjectId}">${s.subjectName}</option>`);
+                });
+            });
+
+            apiCall("GET", "/Users", null, function (data) {
+                const sel = $("#teacherId");
+                sel.empty();
+                sel.append('<option value="">-- Chọn Giảng viên --</option>');
+                // Only RoleId = 3 is Teacher, or role name Teacher/Giáo viên
+                const teachers = data.filter(u => u.roleId === 3 || (u.roleName && (u.roleName.toLowerCase().includes('teacher') || u.roleName.toLowerCase().includes('giáo viên') || u.roleName.toLowerCase().includes('giao vien') || u.roleName.toLowerCase().includes('vin'))));
+                teachers.forEach(t => {
+                    sel.append(`<option value="${t.userId}">${t.firstName} ${t.lastName} (${t.username})</option>`);
+                });
+            });
+        }
+
+        function loadCourses() {
+            apiCall("GET", "/Courses", null, function (data) {
+                allCourses = data;
+                renderTable(data);
+            });
+        }
+
+        function searchCourses() {
+            const query = $("#searchInput").val().toLowerCase();
+            const filtered = allCourses.filter(c => 
+                (c.title && c.title.toLowerCase().includes(query)) ||
+                (c.subjectName && c.subjectName.toLowerCase().includes(query)) ||
+                (c.teacherName && c.teacherName.toLowerCase().includes(query))
+            );
+            renderTable(filtered);
+        }
+
+        function renderTable(data) {
+            const tbody = $("#course-table-body");
+            tbody.empty();
+            selectedCourseId = null;
+
+            data.forEach(c => {
+                const tr = $(`
+                    <tr onclick="selectRow(this, ${c.courseId})" style="cursor: pointer;">
+                        <td><input type="radio" name="selectedCourse" value="${c.courseId}" /></td>
+                        <td>${c.courseId}</td>
+                        <td>${c.title}</td>
+                        <td>${c.subjectName || ""}</td>
+                        <td>${c.teacherName || ""}</td>
+                    </tr>
+                `);
+                tbody.append(tr);
+            });
+        }
+
+        function selectRow(tr, id) {
+            $("#course-table-body tr").removeClass("table-active");
+            $(tr).addClass("table-active");
+            $(tr).find('input[type="radio"]').prop("checked", true);
+            selectedCourseId = id;
+        }
+
+        function showAddModal() {
+            $("#courseId").val("");
+            $("#title").val("");
+            $("#subjectId").val("");
+            $("#teacherId").val("");
+            
+            $("#courseModalTitle").text("Thêm Lớp học");
+            $("#courseModal").modal("show");
+        }
+
+        function showEditModal() {
+            if (!selectedCourseId) {
+                alert("Vui lòng chọn một lớp học để sửa!");
+                return;
+            }
+            const course = allCourses.find(c => c.courseId === selectedCourseId);
+            if (course) {
+                $("#courseId").val(course.courseId);
+                $("#title").val(course.title);
+                $("#subjectId").val(course.subjectId);
+                $("#teacherId").val(course.teacherId || "");
+                
+                $("#courseModalTitle").text("Sửa Lớp học");
+                $("#courseModal").modal("show");
+            }
+        }
+
+        function saveCourse() {
+            const id = $("#courseId").val();
+            const teacherVal = $("#teacherId").val();
+            const data = {
+                title: $("#title").val(),
+                subjectId: parseInt($("#subjectId").val()),
+                teacherId: teacherVal ? parseInt(teacherVal) : null
+            };
+
+            if (!data.title || !data.subjectId) {
+                alert("Vui lòng nhập đầy đủ Tên lớp và Chọn Môn học!");
+                return;
+            }
+
+            if (id) {
+                data.courseId = parseInt(id);
+                apiCall("PUT", "/Courses/" + id, data, function () {
+                    $("#courseModal").modal("hide");
+                    loadCourses();
+                });
+            } else {
+                apiCall("POST", "/Courses", data, function () {
+                    $("#courseModal").modal("hide");
+                    loadCourses();
+                });
+            }
+        }
+
+        function deleteSelected() {
+            if (!selectedCourseId) {
+                alert("Vui lòng chọn một lớp học để xóa!");
+                return;
+            }
+            if (confirm("Bạn có chắc chắn muốn xóa lớp học này?")) {
+                apiCall("DELETE", "/Courses/" + selectedCourseId, null, function () {
+                    loadCourses();
+                });
+            }
+        }
+    </script>
+}

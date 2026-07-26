@@ -1,0 +1,149 @@
+@{
+    ViewData["Title"] = "Quản lý Users";
+    Layout = "_DashboardLayout";
+}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-greeting">Quản trị hệ thống</div>
+    <h1 class="page-title">Quản lý Users</h1>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.4);">
+        Tổng số: <span id="user-count" style="font-weight: 700; color: #a5b4fc;">0</span> người dùng
+    </div>
+    <button class="btn-add" onclick="showUserModal()">
+        <span>＋</span> Thêm User
+    </button>
+</div>
+
+<div style="overflow-x: auto;">
+    <table class="premium-table">
+        <thead>
+            <tr>
+                <th>Tài khoản</th>
+                <th>Họ tên</th>
+                <th>SĐT</th>
+                <th>Vai trò</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody id="user-table-body"></tbody>
+    </table>
+</div>
+
+@section DashboardScripts {
+<script>
+    $(document).ready(function () { loadUsers(); });
+
+    function getRoleTag(roleName) {
+        if (!roleName) return `<span class="role-tag role-tag-default">—</span>`;
+        const r = roleName.toLowerCase();
+        if (r.includes('admin'))   return `<span class="role-tag role-tag-admin">👑 ${roleName}</span>`;
+        if (r.includes('manager') || r.includes('quản lý')) return `<span class="role-tag role-tag-manager">👔 ${roleName}</span>`;
+        if (r.includes('teacher') || r.includes('giáo viên')) return `<span class="role-tag role-tag-teacher">📚 ${roleName}</span>`;
+        return `<span class="role-tag role-tag-default">${roleName}</span>`;
+    }
+
+    function loadUsers() {
+        apiCall("GET", "/Users", null, function (data) {
+            const tbody = $("#user-table-body");
+            tbody.empty();
+            $("#user-count").text(data.length);
+            data.forEach(u => {
+                const initial = u.firstName ? u.firstName.charAt(0).toUpperCase() : (u.username ? u.username.charAt(0).toUpperCase() : 'U');
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=6366f1&color=fff&size=40&rounded=true`;
+                tbody.append(`
+                    <tr>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <img src="${avatarUrl}" style="width:32px;height:32px;border-radius:8px;border:1px solid rgba(99,102,241,0.3);" />
+                                <span style="font-weight:600;">${u.username || '—'}</span>
+                            </div>
+                        </td>
+                        <td>${(u.lastName || '') + ' ' + (u.firstName || '')}</td>
+                        <td style="color:rgba(255,255,255,0.5);">${u.phoneNumber || '—'}</td>
+                        <td>${getRoleTag(u.roleName)}</td>
+                        <td style="text-align: right;">
+                            <button class="btn-delete" onclick="deleteUser(${u.userId})">🗑 Xoá</button>
+                        </td>
+                    </tr>
+                `);
+            });
+        });
+    }
+
+    function deleteUser(id) {
+        if (confirm("Bạn có chắc muốn xoá người dùng này?")) {
+            apiCall("DELETE", `/Users/${id}`, null, loadUsers);
+        }
+    }
+
+    function showUserModal() { $("#userModal").modal("show"); }
+
+    function saveUser() {
+        const data = {
+            username:    $("#m-username").val(),
+            firstName:   $("#m-firstName").val(),
+            lastName:    $("#m-lastName").val(),
+            phoneNumber: $("#m-phoneNumber").val(),
+            roleId:      parseInt($("#m-roleId").val()),
+            password:    $("#m-password").val()
+        };
+        apiCall("POST", "/Users", data, function () {
+            $("#userModal").modal("hide");
+            loadUsers();
+        });
+    }
+</script>
+}
+
+@section Modals {
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content premium-modal">
+            <div class="modal-header premium-header">
+                <h5 class="modal-title">➕ Thêm người dùng</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body premium-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label-premium">Tài khoản</label>
+                        <input type="text" id="m-username" class="form-control-premium" placeholder="Nhập username" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label-premium">Họ</label>
+                        <input type="text" id="m-lastName" class="form-control-premium" placeholder="Nguyễn" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label-premium">Tên</label>
+                        <input type="text" id="m-firstName" class="form-control-premium" placeholder="Văn A" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label-premium">Số điện thoại</label>
+                        <input type="text" id="m-phoneNumber" class="form-control-premium" placeholder="0901234567" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label-premium">Vai trò</label>
+                        <select id="m-roleId" class="form-select-premium">
+                            <option value="1">👑 Admin</option>
+                            <option value="2">👔 Quản lý</option>
+                            <option value="3">📚 Giáo viên</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label-premium">Mật khẩu</label>
+                        <input type="password" id="m-password" class="form-control-premium" placeholder="••••••••" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer premium-footer">
+                <button type="button" class="btn-delete" data-bs-dismiss="modal">Huỷ</button>
+                <button type="button" class="btn-add" onclick="saveUser()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+}

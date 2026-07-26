@@ -1,0 +1,178 @@
+@{
+    ViewData["Title"] = "Cập nhật thông tin";
+    Layout = "_DashboardLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Cập nhật thông tin cá nhân</h2>
+    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+        <i class="me-1">🔑</i> Đổi mật khẩu
+    </button>
+</div>
+
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="changePasswordModalLabel">Đổi mật khẩu</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="changePasswordForm" onsubmit="event.preventDefault(); changePassword();">
+            <div class="mb-3">
+                <label class="fw-bold">Mật khẩu cũ *:</label>
+                <input type="password" id="oldPassword" class="form-control" required />
+            </div>
+            <div class="mb-3">
+                <label class="fw-bold">Mật khẩu mới *:</label>
+                <input type="password" id="newPassword" class="form-control" required minlength="6" />
+            </div>
+            <div class="mb-3">
+                <label class="fw-bold">Xác nhận mật khẩu *:</label>
+                <input type="password" id="confirmPassword" class="form-control" required minlength="6" />
+            </div>
+            <div id="passwordError" class="text-danger mb-3" style="display: none;"></div>
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu mật khẩu</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="glass-panel p-4 mb-4 mx-auto" style="max-width: 800px;">
+    <form id="profileForm" onsubmit="event.preventDefault(); saveProfile();">
+        <input type="hidden" id="userId" />
+        <input type="hidden" id="roleId" />
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold">Tên đăng nhập (Username):</label>
+                <input type="text" id="username" class="form-control" disabled />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold">Họ (Last Name) *:</label>
+                <input type="text" id="lastName" class="form-control" required />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold">Tên (First Name) *:</label>
+                <input type="text" id="firstName" class="form-control" required />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold">Số điện thoại:</label>
+                <input type="text" id="phoneNumber" class="form-control" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold">Giới tính:</label>
+                <select id="gender" class="form-select">
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                    <option value="Khác">Khác</option>
+                </select>
+            </div>
+            <div class="col-12 mb-3">
+                <label class="fw-bold">Địa chỉ:</label>
+                <input type="text" id="address" class="form-control" />
+            </div>
+            <div class="col-12 mb-4">
+                <label class="fw-bold">URL Ảnh đại diện (Avatar):</label>
+                <input type="text" id="avatarUrl" class="form-control" placeholder="https://..." />
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary px-5">
+                <i class="me-1">💾</i> Lưu thay đổi
+            </button>
+        </div>
+    </form>
+</div>
+
+@section DashboardScripts {
+    <script>
+        $(document).ready(function () {
+            // Bulletproof fix for Modal stacking context: move modal to body
+            $("#changePasswordModal").appendTo("body");
+            loadProfile();
+        });
+
+        function loadProfile() {
+            apiCall("GET", "/Users/me", null, function (data) {
+                $("#userId").val(data.userId);
+                $("#roleId").val(data.roleId);
+                $("#username").val(data.username);
+                $("#lastName").val(data.lastName || "");
+                $("#firstName").val(data.firstName || "");
+                $("#phoneNumber").val(data.phoneNumber || "");
+                $("#gender").val(data.gender || "Nam");
+                $("#address").val(data.address || "");
+                $("#avatarUrl").val(data.avatarUrl || "");
+            });
+        }
+
+        function saveProfile() {
+            const id = $("#userId").val();
+            const data = {
+                firstName: $("#firstName").val(),
+                lastName: $("#lastName").val(),
+                phoneNumber: $("#phoneNumber").val(),
+                address: $("#address").val(),
+                gender: $("#gender").val(),
+                avatarUrl: $("#avatarUrl").val(),
+                roleId: parseInt($("#roleId").val()) // maintain current role
+            };
+
+            apiCall("PUT", "/Users/" + id, data, function () {
+                alert("Cập nhật thông tin thành công!");
+                // Optionally refresh layout avatar
+                location.reload();
+            });
+        }
+
+        function changePassword() {
+            const oldPassword = $("#oldPassword").val();
+            const newPassword = $("#newPassword").val();
+            const confirmPassword = $("#confirmPassword").val();
+            
+            if (newPassword !== confirmPassword) {
+                $("#passwordError").text("Mật khẩu xác nhận không khớp.").show();
+                return;
+            }
+            
+            $("#passwordError").hide();
+            
+            const id = $("#userId").val();
+            const data = {
+                oldPassword: oldPassword,
+                newPassword: newPassword
+            };
+            
+            $.ajax({
+                url: apiUrl + "/Users/" + id + "/password",
+                type: "PUT",
+                headers: { "Authorization": "Bearer " + localStorage.getItem("jwtToken") },
+                contentType: "application/json",
+                data: JSON.stringify(data),
+                success: function () {
+                    alert("Đổi mật khẩu thành công!");
+                    $("#changePasswordModal").modal('hide');
+                    $("#oldPassword").val('');
+                    $("#newPassword").val('');
+                    $("#confirmPassword").val('');
+                },
+                error: function (xhr) {
+                    if (xhr.status === 400) {
+                        $("#passwordError").text(xhr.responseText || "Mật khẩu cũ không chính xác.").show();
+                    } else {
+                        $("#passwordError").text("Đã xảy ra lỗi: " + xhr.statusText).show();
+                    }
+                }
+            });
+        }
+    </script>
+}

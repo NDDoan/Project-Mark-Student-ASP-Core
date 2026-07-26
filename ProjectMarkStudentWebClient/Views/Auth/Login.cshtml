@@ -1,0 +1,434 @@
+@{
+    ViewData["Title"] = "Đăng nhập";
+    Layout = "_Layout";
+}
+
+<style>
+    body { overflow: hidden; }
+
+    /* ===== ANIMATED BACKGROUND ===== */
+    .login-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        overflow: hidden;
+    }
+
+    .login-bg::before {
+        content: '';
+        position: absolute;
+        width: 600px; height: 600px;
+        background: radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 70%);
+        top: -150px; left: -150px;
+        animation: floatOrb1 8s ease-in-out infinite alternate;
+        border-radius: 50%;
+    }
+
+    .login-bg::after {
+        content: '';
+        position: absolute;
+        width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%);
+        bottom: -100px; right: -100px;
+        animation: floatOrb2 10s ease-in-out infinite alternate;
+        border-radius: 50%;
+    }
+
+    .orb3 {
+        position: absolute;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(236,72,153,0.2) 0%, transparent 70%);
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        animation: floatOrb3 12s ease-in-out infinite alternate;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    @@keyframes floatOrb1 {
+        from { transform: translate(0, 0) scale(1); }
+        to   { transform: translate(60px, 80px) scale(1.15); }
+    }
+    @@keyframes floatOrb2 {
+        from { transform: translate(0, 0) scale(1); }
+        to   { transform: translate(-60px, -60px) scale(1.1); }
+    }
+    @@keyframes floatOrb3 {
+        from { transform: translate(-50%, -50%) scale(1); }
+        to   { transform: translate(-45%, -55%) scale(1.2); }
+    }
+
+    /* ===== PARTICLES ===== */
+    .particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .particle {
+        position: absolute; width: 4px; height: 4px;
+        background: rgba(255,255,255,0.4); border-radius: 50%;
+        animation: floatParticle linear infinite;
+    }
+    @@keyframes floatParticle {
+        0%   { transform: translateY(110vh) scale(0); opacity: 0; }
+        10%  { opacity: 1; }
+        90%  { opacity: 1; }
+        100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+    }
+
+    /* ===== LAYOUT ===== */
+    .login-container {
+        position: relative; z-index: 10;
+        display: flex; width: 100%; height: 100vh;
+    }
+
+    /* ===== LEFT BRANDING ===== */
+    .login-brand {
+        flex: 1;
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: flex-start;
+        padding: 60px 70px;
+    }
+
+    .brand-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(99,102,241,0.2);
+        border: 1px solid rgba(99,102,241,0.4);
+        border-radius: 50px; padding: 6px 16px;
+        font-size: 0.78rem; font-weight: 600;
+        color: #a5b4fc; letter-spacing: 1px;
+        text-transform: uppercase; margin-bottom: 30px;
+        backdrop-filter: blur(8px);
+        animation: fadeSlideUp 0.6s ease both;
+    }
+    .brand-badge .dot {
+        width: 7px; height: 7px;
+        background: #6366f1; border-radius: 50%;
+        animation: pulseDot 2s ease-in-out infinite;
+    }
+    @@keyframes pulseDot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50%       { opacity: 0.5; transform: scale(1.5); }
+    }
+
+    .brand-logo { font-size: 3.8rem; margin-bottom: 10px; animation: fadeSlideUp 0.6s 0.1s ease both; }
+    .brand-title {
+        font-size: 3rem; font-weight: 800; color: #fff;
+        line-height: 1.15; margin-bottom: 20px;
+        animation: fadeSlideUp 0.6s 0.2s ease both;
+    }
+    .brand-title span {
+        background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .brand-desc {
+        font-size: 1.05rem; color: rgba(255,255,255,0.6); line-height: 1.7;
+        max-width: 400px; margin-bottom: 48px;
+        animation: fadeSlideUp 0.6s 0.3s ease both;
+    }
+    .brand-features { display: flex; flex-direction: column; gap: 14px; animation: fadeSlideUp 0.6s 0.4s ease both; }
+    .brand-feature { display: flex; align-items: center; gap: 14px; color: rgba(255,255,255,0.75); font-size: 0.95rem; }
+    .feature-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
+    }
+    .fi-purple { background: rgba(99,102,241,0.25); }
+    .fi-pink   { background: rgba(236,72,153,0.25); }
+    .fi-teal   { background: rgba(20,184,166,0.25); }
+
+    /* ===== RIGHT FORM ===== */
+    .login-form-panel {
+        width: 460px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        padding: 40px 36px;
+    }
+
+    .login-card {
+        width: 100%;
+        background: rgba(255,255,255,0.06);
+        backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 24px; padding: 44px 40px;
+        box-shadow: 0 32px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+        animation: fadeSlideUp 0.7s 0.2s ease both;
+    }
+
+    .card-header-section { text-align: center; margin-bottom: 36px; }
+    .card-icon {
+        width: 60px; height: 60px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-radius: 18px; display: flex;
+        align-items: center; justify-content: center;
+        font-size: 1.6rem; margin: 0 auto 18px;
+        box-shadow: 0 8px 24px rgba(99,102,241,0.5);
+        animation: iconBounce 0.8s 0.5s ease both;
+    }
+    @@keyframes iconBounce {
+        0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+        60%  { transform: scale(1.1) rotate(5deg); }
+        100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .card-title { font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .card-subtitle { font-size: 0.9rem; color: rgba(255,255,255,0.45); }
+
+    /* ===== FIELDS ===== */
+    .field-group { margin-bottom: 20px; }
+    .field-label {
+        display: block; font-size: 0.82rem; font-weight: 600;
+        color: rgba(255,255,255,0.7); letter-spacing: 0.5px;
+        margin-bottom: 8px; text-transform: uppercase;
+    }
+    .field-wrapper { position: relative; }
+    .field-icon {
+        position: absolute; left: 14px; top: 50%;
+        transform: translateY(-50%); font-size: 1rem;
+        pointer-events: none; opacity: 0.5; transition: opacity 0.2s;
+    }
+    .field-wrapper:focus-within .field-icon { opacity: 0.9; }
+
+    .login-input {
+        width: 100%; box-sizing: border-box;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px; padding: 14px 14px 14px 42px;
+        color: #fff; font-size: 0.95rem; font-family: 'Inter', sans-serif;
+        transition: all 0.25s ease; outline: none;
+    }
+    .login-input::placeholder { color: rgba(255,255,255,0.25); }
+    .login-input:focus {
+        background: rgba(99,102,241,0.12);
+        border-color: rgba(99,102,241,0.6);
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    }
+
+    .toggle-password {
+        position: absolute; right: 14px; top: 50%;
+        transform: translateY(-50%); background: none;
+        border: none; color: rgba(255,255,255,0.4);
+        cursor: pointer; font-size: 1rem; padding: 0; line-height: 1;
+        transition: color 0.2s;
+    }
+    .toggle-password:hover { color: rgba(255,255,255,0.8); }
+
+    /* ===== BUTTON ===== */
+    .btn-login {
+        width: 100%; padding: 15px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border: none; border-radius: 12px; color: white;
+        font-size: 1rem; font-weight: 600; font-family: 'Inter', sans-serif;
+        cursor: pointer; margin-top: 8px;
+        transition: all 0.25s ease;
+        position: relative; overflow: hidden;
+        box-shadow: 0 4px 20px rgba(99,102,241,0.45);
+        letter-spacing: 0.3px;
+    }
+    .btn-login::before {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+        opacity: 0; transition: opacity 0.25s;
+    }
+    .btn-login:hover::before { opacity: 1; }
+    .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99,102,241,0.6); }
+    .btn-login:active { transform: translateY(0); }
+    .btn-login:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+    /* ===== ERROR ===== */
+    .error-message {
+        display: none; align-items: center; gap: 8px;
+        background: rgba(239,68,68,0.15);
+        border: 1px solid rgba(239,68,68,0.3);
+        border-radius: 10px; padding: 12px 14px; margin-top: 16px;
+        font-size: 0.88rem; color: #fca5a5;
+    }
+    .error-message.show { display: flex; animation: shakeErr 0.4s ease; }
+    @@keyframes shakeErr {
+        0%, 100% { transform: translateX(0); }
+        20%, 60% { transform: translateX(-6px); }
+        40%, 80% { transform: translateX(6px); }
+    }
+
+    .login-footer { text-align: center; margin-top: 24px; font-size: 0.8rem; color: rgba(255,255,255,0.25); }
+
+    @@keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(24px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== THEME SELECT ===== */
+    .theme-selector { position: fixed; top: 20px; right: 20px; z-index: 100; }
+    .theme-select-styled {
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 10px; color: rgba(255,255,255,0.8);
+        padding: 8px 14px; font-size: 0.82rem;
+        font-family: 'Inter', sans-serif; cursor: pointer;
+        backdrop-filter: blur(12px); outline: none; transition: all 0.2s;
+    }
+    .theme-select-styled:hover { background: rgba(255,255,255,0.13); border-color: rgba(99,102,241,0.5); }
+    .theme-select-styled option { background: #1e1b4b; color: white; }
+
+    @@media (max-width: 900px) {
+        .login-brand { display: none; }
+        .login-form-panel { width: 100%; padding: 24px 20px; }
+        .login-card { padding: 36px 28px; }
+    }
+</style>
+
+<!-- Background -->
+<div class="login-bg">
+    <div class="orb3"></div>
+    <div class="particles" id="particles"></div>
+</div>
+
+<!-- Theme Toggle -->
+<div class="theme-selector">
+    <select id="theme-select" class="theme-select-styled">
+        <option value="light">☀️ Light</option>
+        <option value="dark">🌙 Dark</option>
+        <option value="system">💻 System</option>
+    </select>
+</div>
+
+<!-- Main -->
+<div class="login-container">
+
+    <!-- LEFT: Branding -->
+    <div class="login-brand">
+        <div class="brand-badge"><span class="dot"></span>Hệ thống quản lý điểm</div>
+        <div class="brand-logo">🎓</div>
+        <h1 class="brand-title">Quản lý điểm<br><span>thông minh</span></h1>
+        <p class="brand-desc">Nền tảng quản lý điểm số học sinh toàn diện — nhanh chóng, chính xác và bảo mật.</p>
+        <div class="brand-features">
+            <div class="brand-feature">
+                <div class="feature-icon fi-purple">📊</div>
+                <span>Thống kê điểm theo lớp và môn học</span>
+            </div>
+            <div class="brand-feature">
+                <div class="feature-icon fi-teal">⚡</div>
+                <span>Cập nhật điểm nhanh, đồng bộ tức thì</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Form -->
+    <div class="login-form-panel">
+        <div class="login-card">
+            <div class="card-header-section">
+                <div class="card-icon">🔐</div>
+                <h2 class="card-title">Đăng nhập</h2>
+                <p class="card-subtitle">Nhập thông tin tài khoản để tiếp tục</p>
+            </div>
+
+            <div class="field-group">
+                <label class="field-label" for="username">Tài khoản</label>
+                <div class="field-wrapper">
+                    <span class="field-icon">👤</span>
+                    <input type="text" id="username" class="login-input"
+                           placeholder="Nhập tên tài khoản" autocomplete="username" />
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label class="field-label" for="password">Mật khẩu</label>
+                <div class="field-wrapper">
+                    <span class="field-icon">🔑</span>
+                    <input type="password" id="password" class="login-input"
+                           placeholder="Nhập mật khẩu" autocomplete="current-password"
+                           style="padding-right: 42px;" />
+                    <button type="button" class="toggle-password" id="toggle-pw" title="Hiện/ẩn mật khẩu">👁️</button>
+                </div>
+            </div>
+
+            <button id="login-btn" class="btn-login" onclick="login()">Đăng nhập</button>
+
+            <div id="login-error" class="error-message">
+                <span>⚠️</span>
+                <span id="login-error-text"></span>
+            </div>
+
+            <div class="login-footer">Project Mark Student &copy; 2026</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Particles
+    (function () {
+        const c = document.getElementById('particles');
+        for (let i = 0; i < 30; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const s = Math.random() * 4 + 2;
+            p.style.cssText = `left:${Math.random()*100}%;width:${s}px;height:${s}px;animation-duration:${Math.random()*15+10}s;animation-delay:${Math.random()*10}s;opacity:${Math.random()*0.5+0.2}`;
+            c.appendChild(p);
+        }
+    })();
+
+    // Password toggle
+    document.getElementById('toggle-pw').addEventListener('click', function () {
+        const pw = document.getElementById('password');
+        pw.type = pw.type === 'password' ? 'text' : 'password';
+        this.textContent = pw.type === 'password' ? '👁️' : '🙈';
+    });
+
+    // Enter key
+    ['username','password'].forEach(function(id){
+        document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Enter') login(); });
+    });
+
+    $(document).ready(function () {
+        if (getAuthInfo() != null) redirectBasedOnRole(getAuthInfo().role);
+    });
+
+    function login() {
+        const username = $("#username").val().trim();
+        const password = $("#password").val();
+        const $btn = $("#login-btn");
+
+        if (!username) { showError("Vui lòng nhập tài khoản."); return; }
+        if (!password) { showError("Vui lòng nhập mật khẩu."); return; }
+
+        $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Đang đăng nhập...');
+        $("#login-error").removeClass('show');
+
+        $.ajax({
+            url: `${apiUrl}/Auth/login`,
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ username, password }),
+            success: function (res) {
+                localStorage.setItem("jwtToken", res.token);
+                try {
+                    const decoded = jwt_decode(res.token);
+                    const role = decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+                    redirectBasedOnRole(role);
+                } catch (e) {
+                    $btn.prop("disabled", false).text("Đăng nhập");
+                    showError("Lỗi hệ thống: Token không hợp lệ.");
+                }
+            },
+            error: function (xhr) {
+                $btn.prop("disabled", false).text("Đăng nhập");
+                if (xhr.status === 0) showError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối.");
+                else if (xhr.status === 401 || xhr.status === 400) showError("Sai tài khoản hoặc mật khẩu.");
+                else showError("Đã xảy ra lỗi: " + xhr.statusText);
+            }
+        });
+    }
+
+    function showError(msg) {
+        $("#login-error-text").text(msg);
+        const el = document.getElementById('login-error');
+        el.classList.remove('show');
+        el.offsetHeight;
+        el.classList.add('show');
+    }
+
+    function redirectBasedOnRole(role) {
+        const r = role ? role.toLowerCase() : "";
+        if (r.includes('admin')) window.location.href = '/Admin/Dashboard';
+        else if (r.includes('quản lý') || r.includes('quan ly') || r.includes('manager') || r.includes('qun ly')) window.location.href = '/Manager/Dashboard';
+        else if (r.includes('giáo viên') || r.includes('giao vien') || r.includes('teacher') || r.includes('viên') || r.includes('vien') || r.includes('vin')) window.location.href = '/Teacher/Dashboard';
+        else { alert("Unrecognized role: " + role); localStorage.removeItem("jwtToken"); }
+    }
+</script>
+}

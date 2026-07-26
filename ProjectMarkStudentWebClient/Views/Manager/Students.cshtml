@@ -1,0 +1,319 @@
+@{
+    ViewData["Title"] = "Quản lý Sinh Viên";
+    Layout = "_DashboardLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Quản lý Sinh Viên</h2>
+</div>
+
+<div class="glass-panel p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="showAddModal()">
+                <i class="me-1">➕</i> Thêm
+            </button>
+            <button class="btn btn-info text-white" onclick="showEditModal()">
+                <i class="me-1">✏️</i> Sửa
+            </button>
+            <button class="btn btn-danger" onclick="deleteSelected()">
+                <i class="me-1">🗑️</i> Xóa
+            </button>
+            <button class="btn btn-secondary" onclick="loadStudents()">
+                <i class="me-1">🔄</i> Làm mới
+            </button>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <input type="text" id="searchInput" class="form-control" placeholder="Tìm kiếm..." style="width: 250px;">
+            <button class="btn btn-primary" onclick="searchStudents()">🔍</button>
+        </div>
+
+        <div class="d-flex gap-2">
+            <input type="file" id="importFile" accept=".xlsx" style="display:none;" onchange="importExcel(this)" />
+            <button class="btn btn-success" onclick="$('#importFile').click()">
+                <i class="me-1">📥</i> Import
+            </button>
+            <button class="btn btn-success" onclick="exportExcel()">
+                <i class="me-1">📤</i> Export
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="premium-table table table-hover">
+        <thead>
+            <tr>
+                <th style="width: 40px;"></th>
+                <th>Roll Number</th>
+                <th>Email</th>
+                <th>Họ</th>
+                <th>Tên</th>
+                <th>Ngày sinh</th>
+                <th>SĐT</th>
+                <th>Giới tính</th>
+            </tr>
+        </thead>
+        <tbody id="student-table-body">
+            <!-- Data will be loaded via AJAX -->
+        </tbody>
+    </table>
+</div>
+
+@section Modals {
+<!-- Add/Edit Student Modal -->
+<div class="modal fade" id="studentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content glass-panel" style="background: var(--surface-color);">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="studentModalTitle">Thêm Sinh Viên</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="studentId" />
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label>Roll Number (*):</label>
+                <input type="text" id="rollNumber" class="form-control" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Email (*):</label>
+                <input type="email" id="email" class="form-control" />
+            </div>
+            <!-- WPF db mapping: LastName -> Họ, FirstName -> Tên -->
+            <div class="col-md-6 mb-3">
+                <label>Họ (*):</label>
+                <input type="text" id="lastName" class="form-control" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Tên (*):</label>
+                <input type="text" id="firstName" class="form-control" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Ngày sinh:</label>
+                <input type="date" id="dob" class="form-control" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Số điện thoại:</label>
+                <input type="text" id="phoneNumber" class="form-control" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Giới tính:</label>
+                <select id="gender" class="form-select">
+                    <option value="">-- Chọn --</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                </select>
+            </div>
+            <div class="col-md-12 mb-3">
+                <label>Địa chỉ:</label>
+                <input type="text" id="address" class="form-control" />
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="saveStudent()">Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+@section DashboardScripts {
+    <script>
+        let allStudents = [];
+        let selectedStudentId = null;
+
+        $(document).ready(function () {
+            loadStudents();
+        });
+
+        function loadStudents() {
+            apiCall("GET", "/Students", null, function (data) {
+                allStudents = data;
+                renderTable(data);
+            });
+        }
+
+        function searchStudents() {
+            const query = $("#searchInput").val().toLowerCase();
+            const filtered = allStudents.filter(s => 
+                (s.rollNumber && s.rollNumber.toLowerCase().includes(query)) ||
+                (s.email && s.email.toLowerCase().includes(query)) ||
+                (s.lastName && s.lastName.toLowerCase().includes(query)) ||
+                (s.firstName && s.firstName.toLowerCase().includes(query))
+            );
+            renderTable(filtered);
+        }
+
+        function renderTable(data) {
+            const tbody = $("#student-table-body");
+            tbody.empty();
+            selectedStudentId = null;
+
+            data.forEach(s => {
+                const dob = s.dob ? s.dob : "";
+                const tr = $(`
+                    <tr onclick="selectRow(this, ${s.id})" style="cursor: pointer;">
+                        <td><input type="radio" name="selectedStudent" value="${s.id}" /></td>
+                        <td>${s.rollNumber}</td>
+                        <td>${s.email}</td>
+                        <td>${s.lastName || ""}</td>
+                        <td>${s.firstName || ""}</td>
+                        <td>${dob}</td>
+                        <td>${s.phoneNumber || ""}</td>
+                        <td>${s.gender || ""}</td>
+                    </tr>
+                `);
+                tbody.append(tr);
+            });
+        }
+
+        function selectRow(tr, id) {
+            $("#student-table-body tr").removeClass("table-active");
+            $(tr).addClass("table-active");
+            $(tr).find('input[type="radio"]').prop("checked", true);
+            selectedStudentId = id;
+        }
+
+        function showAddModal() {
+            $("#studentId").val("");
+            $("#rollNumber").val("");
+            $("#email").val("");
+            $("#lastName").val("");
+            $("#firstName").val("");
+            $("#dob").val("");
+            $("#phoneNumber").val("");
+            $("#gender").val("");
+            $("#address").val("");
+            
+            $("#studentModalTitle").text("Thêm Sinh Viên");
+            $("#studentModal").modal("show");
+        }
+
+        function showEditModal() {
+            if (!selectedStudentId) {
+                alert("Vui lòng chọn một sinh viên để sửa!");
+                return;
+            }
+            const student = allStudents.find(s => s.id === selectedStudentId);
+            if (student) {
+                $("#studentId").val(student.id);
+                $("#rollNumber").val(student.rollNumber);
+                $("#email").val(student.email);
+                $("#lastName").val(student.lastName);
+                $("#firstName").val(student.firstName);
+                
+                // Format date for input type="date"
+                let dobVal = "";
+                if (student.dob) {
+                    dobVal = student.dob;
+                }
+                $("#dob").val(dobVal);
+                
+                $("#phoneNumber").val(student.phoneNumber);
+                $("#gender").val(student.gender);
+                $("#address").val(student.address);
+
+                $("#studentModalTitle").text("Sửa Sinh Viên");
+                $("#studentModal").modal("show");
+            }
+        }
+
+        function saveStudent() {
+            const id = $("#studentId").val();
+            const data = {
+                rollNumber: $("#rollNumber").val(),
+                email: $("#email").val(),
+                lastName: $("#lastName").val(),
+                firstName: $("#firstName").val(),
+                dob: $("#dob").val() || null,
+                phoneNumber: $("#phoneNumber").val(),
+                gender: $("#gender").val(),
+                address: $("#address").val()
+            };
+
+            if (!data.rollNumber || !data.email || !data.lastName || !data.firstName) {
+                alert("Vui lòng nhập đầy đủ các trường bắt buộc (*)");
+                return;
+            }
+
+            if (id) {
+                data.id = parseInt(id);
+                apiCall("PUT", "/Students/" + id, data, function () {
+                    $("#studentModal").modal("hide");
+                    loadStudents();
+                });
+            } else {
+                apiCall("POST", "/Students", data, function () {
+                    $("#studentModal").modal("hide");
+                    loadStudents();
+                });
+            }
+        }
+
+        function deleteSelected() {
+            if (!selectedStudentId) {
+                alert("Vui lòng chọn một sinh viên để xóa!");
+                return;
+            }
+            if (confirm("Bạn có chắc chắn muốn xóa sinh viên này?")) {
+                apiCall("DELETE", "/Students/" + selectedStudentId, null, function () {
+                    loadStudents();
+                });
+            }
+        }
+        function exportExcel() {
+            fetch(apiUrl + "/Students/export", {
+                method: 'GET',
+                headers: {
+                    "Authorization": "Bearer " + localStorage.getItem("jwtToken")
+                }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Error downloading file");
+                return res.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "DanhSachSinhVien.xlsx";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                alert("Xuất file thất bại: " + err);
+            });
+        }
+
+        function importExcel(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+
+            $.ajax({
+                url: apiUrl + "/Students/import",
+                type: "POST",
+                headers: { "Authorization": "Bearer " + localStorage.getItem("jwtToken") },
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (res) {
+                    alert(res.message);
+                    input.value = ""; // reset input
+                    loadStudents(); // reload table
+                },
+                error: function (xhr) {
+                    alert("Import lỗi: " + (xhr.responseText || xhr.statusText));
+                    input.value = "";
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,220 @@
+@{
+    ViewData["Title"] = "Nhập điểm cố định";
+    Layout = "_DashboardLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Nhập điểm cố định</h2>
+</div>
+
+<div class="glass-panel p-3 mb-4">
+    <div class="row align-items-end mb-3">
+        <div class="col-md-4">
+            <label class="fw-bold">Chọn Lớp học:</label>
+            <select id="courseId" class="form-select" onchange="onCourseChange()">
+                <option value="">-- Chọn Lớp --</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="fw-bold">Chọn Thành phần điểm:</label>
+            <select id="gradeItemId" class="form-select" onchange="loadStudentsForMarking()">
+                <option value="">-- Chọn Thành phần --</option>
+            </select>
+        </div>
+        <div class="col-md-4 d-flex justify-content-end align-items-end gap-2">
+            <button class="btn btn-primary" onclick="saveAllMarks()">
+                <i class="me-1">💾</i> Lưu tất cả điểm
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="premium-table table table-hover">
+        <thead>
+            <tr>
+                <th>Roll Number</th>
+                <th>Họ & Tên</th>
+                <th style="width: 200px;">Điểm</th>
+            </tr>
+        </thead>
+        <tbody id="mark-table-body">
+            <tr>
+                <td colspan="3" class="text-center text-muted">Vui lòng chọn lớp học và thành phần điểm</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+@section DashboardScripts {
+    <script>
+        let currentCourse = null;
+        let students = [];
+        // Map of studentId to mark value
+        let marksCache = {};
+
+        $(document).ready(function () {
+            loadCourses();
+        });
+
+        function loadCourses() {
+            apiCall("GET", "/Courses", null, function (data) {
+                // Store courses in a global variable or attach data to options to know SubjectId
+                window.coursesList = data;
+                const sel = $("#courseId");
+                sel.empty();
+                sel.append('<option value="">-- Chọn Lớp --</option>');
+                data.forEach(c => {
+                    sel.append(`<option value="${c.courseId}">${c.title} (${c.subjectName})</option>`);
+                });
+            });
+        }
+
+        function onCourseChange() {
+            const courseId = $("#courseId").val();
+            $("#mark-table-body").html('<tr><td colspan="3" class="text-center text-muted">Vui lòng chọn lớp học và thành phần điểm</td></tr>');
+            
+            if (!courseId) {
+                $("#gradeItemId").empty().append('<option value="">-- Chọn Thành phần --</option>');
+                return;
+            }
+
+            const course = window.coursesList.find(c => c.courseId == courseId);
+            if (course) {
+                currentCourse = course;
+                // Fetch grade items for the subject
+                apiCall("GET", "/GradeItems/subject/" + course.subjectId, null, function (data) {
+                    const sel = $("#gradeItemId");
+                    sel.empty();
+                    sel.append('<option value="">-- Chọn Thành phần --</option>');
+                    data.forEach(g => {
+                        sel.append(`<option value="${g.gradeItemId}">${g.title} (${g.rate}%)</option>`);
+                    });
+                });
+            }
+        }
+
+        async function loadStudentsForMarking() {
+            const courseId = $("#courseId").val();
+            const gradeItemId = $("#gradeItemId").val();
+            const tbody = $("#mark-table-body");
+            
+            if (!courseId || !gradeItemId) {
+                tbody.html('<tr><td colspan="3" class="text-center text-muted">Vui lòng chọn lớp học và thành phần điểm</td></tr>');
+                return;
+            }
+
+            tbody.html('<tr><td colspan="3" class="text-center">Đang tải danh sách sinh viên...</td></tr>');
+
+            try {
+                // Fetch students
+                const studentsData = await $.ajax({
+                    url: apiUrl + "/Courses/" + courseId + "/students",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + localStorage.getItem("jwtToken") }
+                });
+
+                students = studentsData;
+                marksCache = {};
+
+                // Fetch marks individually (Since API doesn't have bulk fetch for course/gradeItem)
+                const fetchPromises = students.map(s => {
+                    return $.ajax({
+                        url: apiUrl + `/Marks/course/${courseId}/student/${s.id}`,
+                        type: "GET",
+                        headers: { "Authorization": "Bearer " + localStorage.getItem("jwtToken") }
+                    }).then(marks => {
+                        const markForGradeItem = marks.find(m => m.gradeItemId == gradeItemId);
+                        if (markForGradeItem) {
+                            marksCache[s.id] = markForGradeItem.value;
+                        }
+                    }).catch(e => {
+                        // ignore errors for individual student fetches
+                    });
+                });
+
+                await Promise.all(fetchPromises);
+
+                renderMarksTable();
+            } catch (e) {
+                alert("Lỗi khi tải dữ liệu sinh viên.");
+                tbody.empty();
+            }
+        }
+
+        function renderMarksTable() {
+            const tbody = $("#mark-table-body");
+            tbody.empty();
+
+            if (students.length === 0) {
+                tbody.html('<tr><td colspan="3" class="text-center text-muted">Lớp học này chưa có sinh viên nào</td></tr>');
+                return;
+            }
+
+            students.forEach(s => {
+                const markValue = marksCache[s.id] !== undefined ? marksCache[s.id] : "";
+                const tr = $(`
+                    <tr>
+                        <td>${s.rollNumber}</td>
+                        <td>${s.lastName || ""} ${s.firstName || ""}</td>
+                        <td>
+                            <input type="number" step="0.1" min="0" max="10" 
+                                class="form-control student-mark-input" 
+                                data-studentid="${s.id}" 
+                                value="${markValue}" />
+                        </td>
+                    </tr>
+                `);
+                tbody.append(tr);
+            });
+        }
+
+        function saveAllMarks() {
+            const courseId = $("#courseId").val();
+            const gradeItemId = $("#gradeItemId").val();
+
+            if (!courseId || !gradeItemId) {
+                alert("Vui lòng chọn Lớp học và Thành phần điểm trước khi lưu!");
+                return;
+            }
+
+            const studentMarks = {};
+            let hasErrors = false;
+
+            $(".student-mark-input").each(function () {
+                const val = $(this).val();
+                if (val !== "") {
+                    const numVal = parseFloat(val);
+                    if (numVal < 0 || numVal > 10) {
+                        hasErrors = true;
+                        $(this).addClass("is-invalid");
+                    } else {
+                        $(this).removeClass("is-invalid");
+                        studentMarks[$(this).data("studentid")] = numVal;
+                    }
+                }
+            });
+
+            if (hasErrors) {
+                alert("Có điểm số không hợp lệ (Điểm phải từ 0 đến 10). Vui lòng kiểm tra lại!");
+                return;
+            }
+
+            if (Object.keys(studentMarks).length === 0) {
+                alert("Vui lòng nhập ít nhất một điểm số!");
+                return;
+            }
+
+            const payload = {
+                courseId: parseInt(courseId),
+                gradeItemId: parseInt(gradeItemId),
+                studentMarks: studentMarks
+            };
+
+            apiCall("POST", "/Marks/entry", payload, function () {
+                alert("Đã lưu điểm thành công!");
+                loadStudentsForMarking();
+            });
+        }
+    </script>
+}

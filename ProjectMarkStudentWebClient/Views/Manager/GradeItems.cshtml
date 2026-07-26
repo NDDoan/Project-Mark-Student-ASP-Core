@@ -1,0 +1,252 @@
+@{
+    ViewData["Title"] = "Quản lý Thành phần điểm";
+    Layout = "_DashboardLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Quản lý Thành phần điểm</h2>
+</div>
+
+<div class="glass-panel p-3 mb-4">
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 d-flex align-items-center gap-2">
+            <label class="fw-bold mb-0 text-nowrap">Chọn Môn học:</label>
+            <select id="filterSubjectId" class="form-select" onchange="loadGradeItems()">
+                <option value="">-- Chọn --</option>
+            </select>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="showAddModal()">
+                <i class="me-1">➕</i> Thêm
+            </button>
+            <button class="btn btn-info text-white" onclick="showEditModal()">
+                <i class="me-1">✏️</i> Sửa
+            </button>
+            <button class="btn btn-danger" onclick="deleteSelected()">
+                <i class="me-1">🗑️</i> Xóa
+            </button>
+            <button class="btn btn-secondary" onclick="loadGradeItems()">
+                <i class="me-1">🔄</i> Làm mới
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="premium-table table table-hover">
+        <thead>
+            <tr>
+                <th style="width: 40px;"></th>
+                <th>ID</th>
+                <th>Tên Thành phần (Title)</th>
+                <th>Tỷ lệ % (Rate)</th>
+            </tr>
+        </thead>
+        <tbody id="grade-table-body">
+            <tr>
+                <td colspan="4" class="text-center text-muted">Vui lòng chọn môn học để xem thành phần điểm</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+@section Modals {
+<!-- Add/Edit GradeItem Modal -->
+<div class="modal fade" id="gradeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content glass-panel" style="background: var(--surface-color);">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="gradeModalTitle">Thêm Thành phần điểm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="gradeItemId" />
+        <div class="mb-3">
+            <label>Môn học:</label>
+            <input type="text" id="displaySubjectName" class="form-control" readonly />
+        </div>
+        <div class="mb-3">
+            <label>Tên Thành phần (*):</label>
+            <input type="text" id="title" class="form-control" placeholder="Ví dụ: Giữa kỳ" />
+        </div>
+        <div class="mb-3">
+            <label>Tỷ lệ % (Rate) (*):</label>
+            <input type="number" id="rate" class="form-control" min="0" max="100" />
+        </div>
+      </div>
+      <div class="modal-footer border-top-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="saveGradeItem()">Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+@section DashboardScripts {
+    <script>
+        let allGradeItems = [];
+        let selectedGradeItemId = null;
+
+        $(document).ready(function () {
+            loadSubjects();
+        });
+
+        function loadSubjects() {
+            apiCall("GET", "/Subjects", null, function (data) {
+                const sel = $("#filterSubjectId");
+                sel.empty();
+                sel.append('<option value="">-- Chọn Môn học --</option>');
+                data.forEach(s => {
+                    sel.append(`<option value="${s.subjectId}">${s.subjectName}</option>`);
+                });
+            });
+        }
+
+        function loadGradeItems() {
+            const subjectId = $("#filterSubjectId").val();
+            const tbody = $("#grade-table-body");
+            
+            if (!subjectId) {
+                tbody.html('<tr><td colspan="4" class="text-center text-muted">Vui lòng chọn môn học để xem thành phần điểm</td></tr>');
+                allGradeItems = [];
+                selectedGradeItemId = null;
+                return;
+            }
+
+            apiCall("GET", "/GradeItems/subject/" + subjectId, null, function (data) {
+                allGradeItems = data;
+                renderTable(data);
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = $("#grade-table-body");
+            tbody.empty();
+            selectedGradeItemId = null;
+
+            if (data.length === 0) {
+                tbody.html('<tr><td colspan="4" class="text-center text-muted">Không có thành phần điểm nào cho môn này</td></tr>');
+                return;
+            }
+
+            data.forEach(g => {
+                const tr = $(`
+                    <tr onclick="selectRow(this, ${g.gradeItemId})" style="cursor: pointer;">
+                        <td><input type="radio" name="selectedGrade" value="${g.gradeItemId}" /></td>
+                        <td>${g.gradeItemId}</td>
+                        <td>${g.title}</td>
+                        <td>${g.rate}%</td>
+                    </tr>
+                `);
+                tbody.append(tr);
+            });
+        }
+
+        function selectRow(tr, id) {
+            $("#grade-table-body tr").removeClass("table-active");
+            $(tr).addClass("table-active");
+            $(tr).find('input[type="radio"]').prop("checked", true);
+            selectedGradeItemId = id;
+        }
+
+        function showAddModal() {
+            const subjectId = $("#filterSubjectId").val();
+            if (!subjectId) {
+                alert("Vui lòng chọn Môn học trước khi thêm Thành phần điểm!");
+                return;
+            }
+            
+            const subjectName = $("#filterSubjectId option:selected").text();
+
+            $("#gradeItemId").val("");
+            $("#title").val("");
+            $("#rate").val("");
+            $("#displaySubjectName").val(subjectName);
+            
+            $("#gradeModalTitle").text("Thêm Thành phần điểm");
+            $("#gradeModal").modal("show");
+        }
+
+        function showEditModal() {
+            if (!selectedGradeItemId) {
+                alert("Vui lòng chọn một thành phần điểm để sửa!");
+                return;
+            }
+            
+            const subjectName = $("#filterSubjectId option:selected").text();
+            const gradeItem = allGradeItems.find(g => g.gradeItemId === selectedGradeItemId);
+            
+            if (gradeItem) {
+                $("#gradeItemId").val(gradeItem.gradeItemId);
+                $("#displaySubjectName").val(subjectName);
+                $("#title").val(gradeItem.title);
+                $("#rate").val(gradeItem.rate);
+                
+                $("#gradeModalTitle").text("Sửa Thành phần điểm");
+                $("#gradeModal").modal("show");
+            }
+        }
+
+        function saveGradeItem() {
+            const id = $("#gradeItemId").val();
+            const subjectId = $("#filterSubjectId").val();
+            
+            const data = {
+                title: $("#title").val(),
+                rate: parseFloat($("#rate").val()),
+                subjectId: parseInt(subjectId)
+            };
+
+            if (!data.title || isNaN(data.rate)) {
+                alert("Vui lòng nhập đầy đủ Tên và Tỷ lệ!");
+                return;
+            }
+
+            if (data.rate < 0 || data.rate > 100) {
+                alert("Tỷ lệ % (Rate) phải nằm trong khoảng từ 0 đến 100!");
+                return;
+            }
+
+            let totalRate = 0;
+            allGradeItems.forEach(g => {
+                if (id && g.gradeItemId === parseInt(id)) {
+                    return; // Bỏ qua thành phần đang sửa để tính lại tổng
+                }
+                totalRate += g.rate;
+            });
+
+            if (totalRate + data.rate > 100) {
+                alert("Lỗi: Tổng tỷ lệ % của môn học này sẽ vượt quá 100% (Tổng các thành phần khác: " + totalRate + "%, Bạn nhập: " + data.rate + "%). Vui lòng điều chỉnh lại!");
+                return;
+            }
+
+            if (id) {
+                data.gradeItemId = parseInt(id);
+                apiCall("PUT", "/GradeItems/" + id, data, function () {
+                    $("#gradeModal").modal("hide");
+                    loadGradeItems();
+                });
+            } else {
+                apiCall("POST", "/GradeItems", data, function () {
+                    $("#gradeModal").modal("hide");
+                    loadGradeItems();
+                });
+            }
+        }
+
+        function deleteSelected() {
+            if (!selectedGradeItemId) {
+                alert("Vui lòng chọn một thành phần điểm để xóa!");
+                return;
+            }
+            if (confirm("Bạn có chắc chắn muốn xóa thành phần điểm này?")) {
+                apiCall("DELETE", "/GradeItems/" + selectedGradeItemId, null, function () {
+                    loadGradeItems();
+                });
+            }
+        }
+    </script>
+}

@@ -1,0 +1,192 @@
+@{
+    ViewData["Title"] = "Quản lý Môn học";
+    Layout = "_DashboardLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Quản lý Môn học</h2>
+</div>
+
+<div class="glass-panel p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="showAddModal()">
+                <i class="me-1">➕</i> Thêm
+            </button>
+            <button class="btn btn-info text-white" onclick="showEditModal()">
+                <i class="me-1">✏️</i> Sửa
+            </button>
+            <button class="btn btn-danger" onclick="deleteSelected()">
+                <i class="me-1">🗑️</i> Xóa
+            </button>
+            <button class="btn btn-secondary" onclick="loadSubjects()">
+                <i class="me-1">🔄</i> Làm mới
+            </button>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <input type="text" id="searchInput" class="form-control" placeholder="Tìm kiếm..." style="width: 250px;">
+            <button class="btn btn-primary" onclick="searchSubjects()">🔍</button>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="premium-table table table-hover">
+        <thead>
+            <tr>
+                <th style="width: 40px;"></th>
+                <th>ID</th>
+                <th>Tên Môn học</th>
+                <th>Mô tả</th>
+            </tr>
+        </thead>
+        <tbody id="subject-table-body">
+            <!-- Data will be loaded via AJAX -->
+        </tbody>
+    </table>
+</div>
+
+@section Modals {
+<!-- Add/Edit Subject Modal -->
+<div class="modal fade" id="subjectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content glass-panel" style="background: var(--surface-color);">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="subjectModalTitle">Thêm Môn học</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="subjectId" />
+        <div class="mb-3">
+            <label>Tên Môn học (*):</label>
+            <input type="text" id="subjectName" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label>Mô tả:</label>
+            <textarea id="description" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="saveSubject()">Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+@section DashboardScripts {
+    <script>
+        let allSubjects = [];
+        let selectedSubjectId = null;
+
+        $(document).ready(function () {
+            loadSubjects();
+        });
+
+        function loadSubjects() {
+            apiCall("GET", "/Subjects", null, function (data) {
+                allSubjects = data;
+                renderTable(data);
+            });
+        }
+
+        function searchSubjects() {
+            const query = $("#searchInput").val().toLowerCase();
+            const filtered = allSubjects.filter(s => 
+                (s.subjectName && s.subjectName.toLowerCase().includes(query)) ||
+                (s.description && s.description.toLowerCase().includes(query))
+            );
+            renderTable(filtered);
+        }
+
+        function renderTable(data) {
+            const tbody = $("#subject-table-body");
+            tbody.empty();
+            selectedSubjectId = null;
+
+            data.forEach(s => {
+                const tr = $(`
+                    <tr onclick="selectRow(this, ${s.subjectId})" style="cursor: pointer;">
+                        <td><input type="radio" name="selectedSubject" value="${s.subjectId}" /></td>
+                        <td>${s.subjectId}</td>
+                        <td>${s.subjectName}</td>
+                        <td>${s.description || ""}</td>
+                    </tr>
+                `);
+                tbody.append(tr);
+            });
+        }
+
+        function selectRow(tr, id) {
+            $("#subject-table-body tr").removeClass("table-active");
+            $(tr).addClass("table-active");
+            $(tr).find('input[type="radio"]').prop("checked", true);
+            selectedSubjectId = id;
+        }
+
+        function showAddModal() {
+            $("#subjectId").val("");
+            $("#subjectName").val("");
+            $("#description").val("");
+            
+            $("#subjectModalTitle").text("Thêm Môn học");
+            $("#subjectModal").modal("show");
+        }
+
+        function showEditModal() {
+            if (!selectedSubjectId) {
+                alert("Vui lòng chọn một môn học để sửa!");
+                return;
+            }
+            const subject = allSubjects.find(s => s.subjectId === selectedSubjectId);
+            if (subject) {
+                $("#subjectId").val(subject.subjectId);
+                $("#subjectName").val(subject.subjectName);
+                $("#description").val(subject.description);
+                
+                $("#subjectModalTitle").text("Sửa Môn học");
+                $("#subjectModal").modal("show");
+            }
+        }
+
+        function saveSubject() {
+            const id = $("#subjectId").val();
+            const data = {
+                subjectName: $("#subjectName").val(),
+                description: $("#description").val()
+            };
+
+            if (!data.subjectName) {
+                alert("Vui lòng nhập Tên Môn học!");
+                return;
+            }
+
+            if (id) {
+                data.subjectId = parseInt(id);
+                apiCall("PUT", "/Subjects/" + id, data, function () {
+                    $("#subjectModal").modal("hide");
+                    loadSubjects();
+                });
+            } else {
+                apiCall("POST", "/Subjects", data, function () {
+                    $("#subjectModal").modal("hide");
+                    loadSubjects();
+                });
+            }
+        }
+
+        function deleteSelected() {
+            if (!selectedSubjectId) {
+                alert("Vui lòng chọn một môn học để xóa!");
+                return;
+            }
+            if (confirm("Bạn có chắc chắn muốn xóa môn học này?")) {
+                apiCall("DELETE", "/Subjects/" + selectedSubjectId, null, function () {
+                    loadSubjects();
+                });
+            }
+        }
+    </script>
+}

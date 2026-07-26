@@ -1,0 +1,194 @@
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    Layout = "_DashboardLayout";
+}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-greeting">Xin chào trở lại 👋</div>
+    <h1 class="page-title">Admin Dashboard</h1>
+    <div class="page-date" id="todayDate"></div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card stat-card-indigo">
+            <div class="stat-icon stat-icon-indigo">🎓</div>
+            <div class="stat-info">
+                <div class="stat-value stat-value-indigo" id="stat-students">0</div>
+                <div class="stat-label">Sinh viên</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card stat-card-emerald">
+            <div class="stat-icon stat-icon-emerald">👔</div>
+            <div class="stat-info">
+                <div class="stat-value stat-value-emerald" id="stat-managers">0</div>
+                <div class="stat-label">Quản lý</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card stat-card-cyan">
+            <div class="stat-icon stat-icon-cyan">👨‍🏫</div>
+            <div class="stat-info">
+                <div class="stat-value stat-value-cyan" id="stat-teachers">0</div>
+                <div class="stat-label">Giảng viên</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card stat-card-amber">
+            <div class="stat-icon stat-icon-amber">🏫</div>
+            <div class="stat-info">
+                <div class="stat-value stat-value-amber" id="stat-classes">0</div>
+                <div class="stat-label">Lớp học</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3">
+    <div class="col-12">
+        <div class="chart-panel">
+            <h4>📊 Điểm trung bình theo môn</h4>
+            <div style="height: 360px; position: relative;">
+                <canvas id="averageScoreChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-panel">
+            <h4>📈 Phân phối điểm số toàn trường</h4>
+            <div style="height: 280px; position: relative; display: flex; justify-content: center;">
+                <canvas id="scoreDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-panel">
+            <h4>👨‍🎓 Sinh viên đăng ký môn</h4>
+            <div style="height: 280px; position: relative; display: flex; justify-content: center;">
+                <canvas id="enrollmentChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section DashboardScripts {
+<script>
+    // Count-up animation
+    function countUp(el, target, duration) {
+        const start = 0;
+        const increment = target / (duration / 16);
+        let current = start;
+        const timer = setInterval(function () {
+            current += increment;
+            if (current >= target) { current = target; clearInterval(timer); }
+            el.textContent = Math.floor(current);
+        }, 16);
+    }
+
+    $(document).ready(function () {
+        // Date
+        const today = new Date();
+        $("#todayDate").text(
+            "Hôm nay: " +
+            String(today.getDate()).padStart(2,'0') + '/' +
+            String(today.getMonth() + 1).padStart(2,'0') + '/' +
+            today.getFullYear()
+        );
+
+        // Chart common options helper
+        const textColor = () => getComputedStyle(document.body).getPropertyValue('--text-color').trim() || '#cbd5e1';
+
+        // Stats
+        apiCall("GET", "/Users", null, function (users) {
+            const teachers = users.filter(u => u.roleId === 3 || (u.roleName && u.roleName.toLowerCase().includes('teacher'))).length;
+            const managers = users.filter(u => u.roleId === 2 || (u.roleName && u.roleName.toLowerCase().includes('manager'))).length;
+            countUp(document.getElementById('stat-teachers'), teachers, 800);
+            countUp(document.getElementById('stat-managers'), managers, 800);
+        });
+        apiCall("GET", "/Students", null, function (students) {
+            countUp(document.getElementById('stat-students'), students.length, 800);
+        });
+        apiCall("GET", "/Courses", null, function (courses) {
+            countUp(document.getElementById('stat-classes'), courses.length, 800);
+        });
+
+        // Chart defaults
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+        // 1. Bar chart - Average scores
+        apiCall("GET", "/Dashboard/average-scores", null, function (data) {
+            new Chart(document.getElementById('averageScoreChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.subjectName),
+                    datasets: [{
+                        label: 'Điểm trung bình',
+                        data: data.map(d => d.averageScore),
+                        backgroundColor: 'rgba(99,102,241,0.55)',
+                        borderColor: 'rgba(99,102,241,0.9)',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } } },
+                    scales: {
+                        y: { beginAtZero: true, max: 10, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        });
+
+        // 2. Pie - Score distribution
+        apiCall("GET", "/Dashboard/score-distribution", null, function (data) {
+            new Chart(document.getElementById('scoreDistributionChart').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: ['#6366f1','#10b981','#06b6d4','#f59e0b','#f43f5e','#8b5cf6','#14b8a6','#ec4899','#84cc16','#f97316'],
+                        borderWidth: 2, borderColor: '#161b2e'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, padding: 12 } } }
+                }
+            });
+        });
+
+        // 3. Doughnut - Enrollments
+        apiCall("GET", "/Dashboard/enrollments", null, function (data) {
+            new Chart(document.getElementById('enrollmentChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(d => d.subjectName),
+                    datasets: [{
+                        data: data.map(d => d.studentCount),
+                        backgroundColor: ['#06b6d4','#6366f1','#10b981','#f59e0b','#8b5cf6','#f43f5e','#14b8a6','#ec4899'],
+                        borderWidth: 2, borderColor: '#161b2e'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, padding: 12 } } }
+                }
+            });
+        });
+    });
+</script>
+}
+
+
