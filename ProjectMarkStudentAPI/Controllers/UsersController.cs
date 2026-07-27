@@ -17,11 +17,13 @@ namespace ProjectMarkStudentAPI.Controllers
     {
         private readonly ProjectStudentMarkContext _context;
         private readonly IMapper _mapper;
+        private readonly IConfiguration _configuration;
 
-        public UsersController(ProjectStudentMarkContext context, IMapper mapper)
+        public UsersController(ProjectStudentMarkContext context, IMapper mapper, IConfiguration configuration)
         {
             _context = context;
             _mapper = mapper;
+            _configuration = configuration;
         }
 
         [HttpGet]
@@ -108,6 +110,78 @@ namespace ProjectMarkStudentAPI.Controllers
 
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        /// <summary>
+        /// Upload ảnh đại diện cho user, lưu vào wwwroot/assets/pictures/profile của WebClient.
+        /// Xóa avatar cũ (nếu có) để tránh rác file.
+        /// Trả về: { "avatarUrl": "/assets/pictures/profile/filename.ext" }
+        /// </summary>
+        [HttpPost("{id}/avatar")]
+        public async Task<IActionResult> UploadAvatar(int id, IFormFile file)
+        {
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
+            if (user == null)
+                return NotFound();
+
+            // Chỉ Admin của chính mình mới được sửa
+            if (user.Role?.RoleName == RoleNames.Admin)
+            {
+                var currentUsername = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (user.Username != currentUsername)
+                    return Forbid();
+            }
+
+            // --- Validate file ---
+            if (file == null || file.Length == 0)
+                return BadRequest(new { error = "Không có file được gửi lên." });
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(ext))
+                return BadRequest(new { error = "Định dạng ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP." });
+
+            var maxSize = _configuration.GetValue<long>("AvatarStorage:MaxFileSizeBytes", 5 * 1024 * 1024);
+            if (file.Length > maxSize)
+                return BadRequest(new { error = $"Ảnh quá lớn. Tối đa {maxSize / 1024 / 1024}MB." });
+
+            // --- Xác định thư mục lưu file ---
+            var configuredPath = _configuration["AvatarStorage:PhysicalPath"];
+            var folderPath = Path.IsPathRooted(configuredPath!)
+                ? configuredPath!
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, configuredPath!));
+
+            Directory.CreateDirectory(folderPath);
+
+            // --- Xóa avatar cũ (nếu có và nằm trong cùng thư mục) ---
+            if (!string.IsNullOrEmpty(user.AvatarUrl))
+            {
+                var urlBase = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+                if (user.AvatarUrl.StartsWith(urlBase))
+                {
+                    var oldFileName = Path.GetFileName(user.AvatarUrl);
+                    var oldFilePath = Path.Combine(folderPath, oldFileName);
+                    if (System.IO.File.Exists(oldFilePath))
+                        System.IO.File.Delete(oldFilePath);
+                }
+            }
+
+            // --- Lưu file mới ---
+            var newFileName = $"{Guid.NewGuid()}{ext}";
+            var newFilePath = Path.Combine(folderPath, newFileName);
+
+            using (var stream = new FileStream(newFilePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // --- Cập nhật DB ---
+            var urlBaseConfig = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+            user.AvatarUrl = $"{urlBaseConfig}/{newFileName}";
+            user.UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { avatarUrl = user.AvatarUrl });
         }
 
         [HttpPut("{id}/password")]

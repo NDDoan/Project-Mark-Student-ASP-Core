@@ -35,7 +35,7 @@ public partial class ProjectStudentMarkContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-        optionsBuilder.UseSqlServer(config.GetConnectionString("MyCnn_Local"));
+        optionsBuilder.UseSqlServer(config.GetConnectionString("MyCnn"));
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
