@@ -100,4 +100,11 @@ namespace ProjectMarkStudentAPI.DTOs
         [StringLength(255)]
         public string NewPassword { get; set; } = null!;
     }
+
+    public class ResetPasswordDTO
+    {
+        [Required]
+        [StringLength(255)]
+        public string NewPassword { get; set; } = null!;
+    }
 }

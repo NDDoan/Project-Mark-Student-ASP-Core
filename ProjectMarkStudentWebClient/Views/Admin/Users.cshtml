@@ -151,8 +151,9 @@
                         <td style="color:rgba(255,255,255,0.5);">${u.phoneNumber || '—'}</td>
                         <td>${getRoleTag(u.roleName)}</td>
                         <td id="status-cell-${u.userId}">${getStatusBadge(u.status)}</td>
-                        <td style="text-align: right;" id="action-cell-${u.userId}">
-                            ${getToggleBtn(u.userId, u.status)}
+                        <td style="text-align: right;">
+                            <span id="action-toggle-${u.userId}">${getToggleBtn(u.userId, u.status)}</span>
+                            <button class="btn-toggle-on" style="margin-left: 5px; color: #fbbf24; background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.25);" onclick="showResetPasswordModal(${u.userId}, '${u.username || ''}')" title="Đổi mật khẩu">🔑 Đổi MK</button>
                         </td>
                     </tr>
                 `);
@@ -171,7 +172,7 @@
             const newStatus = res.status;
             // Cập nhật UI tại chỗ, không cần reload toàn bảng
             $(`#status-cell-${userId}`).html(getStatusBadge(newStatus));
-            $(`#action-cell-${userId}`).html(getToggleBtn(userId, newStatus));
+            $(`#action-toggle-${userId}`).html(getToggleBtn(userId, newStatus));
 
             const row = $(`#user-row-${userId}`);
             if (newStatus) {
@@ -215,6 +216,28 @@
         apiCall("POST", "/Users", data, function () {
             $("#userModal").modal("hide");
             loadUsers();
+        });
+    }
+
+    let currentResetUserId = null;
+    function showResetPasswordModal(userId, username) {
+        currentResetUserId = userId;
+        $("#reset-username").text(username);
+        $("#m-newPassword").val('');
+        $("#resetPasswordModal").modal("show");
+    }
+
+    function resetPassword() {
+        if (!currentResetUserId) return;
+        const newPassword = $("#m-newPassword").val();
+        if (!newPassword) {
+            alert("Vui lòng nhập mật khẩu mới.");
+            return;
+        }
+
+        apiCall("POST", `/Users/${currentResetUserId}/reset-password`, { newPassword: newPassword }, function () {
+            alert("Đổi mật khẩu thành công!");
+            $("#resetPasswordModal").modal("hide");
         });
     }
 </script>
@@ -263,6 +286,29 @@
             <div class="modal-footer premium-footer">
                 <button type="button" class="btn-delete" data-bs-dismiss="modal">Huỷ</button>
                 <button type="button" class="btn-add" onclick="saveUser()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content premium-modal">
+            <div class="modal-header premium-header">
+                <h5 class="modal-title">🔑 Đổi mật khẩu cho: <span id="reset-username" style="color: #fbbf24;"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body premium-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label-premium">Mật khẩu mới <span style="color:#f87171;">*</span></label>
+                        <input type="password" id="m-newPassword" class="form-control-premium" placeholder="Nhập mật khẩu mới" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer premium-footer">
+                <button type="button" class="btn-delete" data-bs-dismiss="modal">Huỷ</button>
+                <button type="button" class="btn-add" style="background: rgba(251,191,36,0.1); color: #fbbf24; border-color: rgba(251,191,36,0.25); box-shadow: none;" onclick="resetPassword()">💾 Cập nhật</button>
             </div>
         </div>
     </div>

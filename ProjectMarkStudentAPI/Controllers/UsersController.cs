@@ -277,6 +277,23 @@ namespace ProjectMarkStudentAPI.Controllers
             return NoContent();
         }
 
+        [HttpPost("{id}/reset-password")]
+        [Authorize(Roles = RoleNames.Admin)]
+        public async Task<IActionResult> ResetPassword(int id, ResetPasswordDTO dto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            user.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
         [HttpDelete("{id}")]
         [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> DeleteUser(int id)
