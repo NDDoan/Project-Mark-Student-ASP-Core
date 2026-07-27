@@ -100,7 +100,8 @@ namespace ProjectMarkStudentAPI.Controllers
             user.FirstName = userDto.FirstName;
             user.LastName = userDto.LastName;
             user.PhoneNumber = userDto.PhoneNumber;
-            user.AvatarUrl = userDto.AvatarUrl;
+            // Nếu AvatarUrl là đường dẫn file local thì copy vào assets và đổi thành URL chuẩn
+            user.AvatarUrl = ResolveAvatarUrl(userDto.AvatarUrl, user.AvatarUrl);
             user.Address = userDto.Address;
             user.Gender = userDto.Gender;
             user.RoleId = userDto.RoleId;
@@ -110,6 +111,131 @@ namespace ProjectMarkStudentAPI.Controllers
             return NoContent();
         }
 
+<<<<<<< HEAD
+=======
+        /// <summary>
+        /// Kiểm tra nếu <paramref name="newUrl"/> là đường dẫn file local tồn tại trên disk
+        /// thì copy vào thư mục assets của WebClient và trả về URL chuẩn.
+        /// Nếu đã là URL web (bắt đầu bằng / hoặc http) thì giữ nguyên.
+        /// </summary>
+        private string? ResolveAvatarUrl(string? newUrl, string? oldUrl)
+        {
+            if (string.IsNullOrWhiteSpace(newUrl))
+                return newUrl;
+
+            // Đã là URL web — không cần xử lý thêm
+            if (newUrl.StartsWith("/") || newUrl.StartsWith("http://") || newUrl.StartsWith("https://"))
+                return newUrl;
+
+            // Không phải đường dẫn local hợp lệ — giữ nguyên
+            if (!Path.IsPathRooted(newUrl) || !System.IO.File.Exists(newUrl))
+                return newUrl;
+
+            // --- Đây là đường dẫn file local: copy vào assets ---
+            var configuredPath = _configuration["AvatarStorage:PhysicalPath"];
+            var folderPath = Path.IsPathRooted(configuredPath!)
+                ? configuredPath!
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, configuredPath!));
+
+            Directory.CreateDirectory(folderPath);
+
+            // Xóa avatar cũ (nếu cùng thư mục quản lý)
+            if (!string.IsNullOrEmpty(oldUrl))
+            {
+                var urlBase = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+                if (oldUrl.StartsWith(urlBase))
+                {
+                    var oldFileName = Path.GetFileName(oldUrl);
+                    var oldFilePath = Path.Combine(folderPath, oldFileName);
+                    if (System.IO.File.Exists(oldFilePath))
+                        System.IO.File.Delete(oldFilePath);
+                }
+            }
+
+            var ext = Path.GetExtension(newUrl).ToLowerInvariant();
+            var newFileName = $"{Guid.NewGuid()}{ext}";
+            var destPath = Path.Combine(folderPath, newFileName);
+
+            System.IO.File.Copy(newUrl, destPath, overwrite: true);
+
+            var urlBaseConfig = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+            return $"{urlBaseConfig}/{newFileName}";
+        }
+
+
+        /// <summary>
+        /// Upload ảnh đại diện cho user, lưu vào wwwroot/assets/pictures/profile của WebClient.
+        /// Xóa avatar cũ (nếu có) để tránh rác file.
+        /// Trả về: { "avatarUrl": "/assets/pictures/profile/filename.ext" }
+        /// </summary>
+        [HttpPost("{id}/avatar")]
+        public async Task<IActionResult> UploadAvatar(int id, IFormFile file)
+        {
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
+            if (user == null)
+                return NotFound();
+
+            // Chỉ Admin của chính mình mới được sửa
+            if (user.Role?.RoleName == RoleNames.Admin)
+            {
+                var currentUsername = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (user.Username != currentUsername)
+                    return Forbid();
+            }
+
+            // --- Validate file ---
+            if (file == null || file.Length == 0)
+                return BadRequest(new { error = "Không có file được gửi lên." });
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(ext))
+                return BadRequest(new { error = "Định dạng ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP." });
+
+            var maxSize = _configuration.GetValue<long>("AvatarStorage:MaxFileSizeBytes", 5 * 1024 * 1024);
+            if (file.Length > maxSize)
+                return BadRequest(new { error = $"Ảnh quá lớn. Tối đa {maxSize / 1024 / 1024}MB." });
+
+            // --- Xác định thư mục lưu file ---
+            var configuredPath = _configuration["AvatarStorage:PhysicalPath"];
+            var folderPath = Path.IsPathRooted(configuredPath!)
+                ? configuredPath!
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, configuredPath!));
+
+            Directory.CreateDirectory(folderPath);
+
+            // --- Xóa avatar cũ (nếu có và nằm trong cùng thư mục) ---
+            if (!string.IsNullOrEmpty(user.AvatarUrl))
+            {
+                var urlBase = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+                if (user.AvatarUrl.StartsWith(urlBase))
+                {
+                    var oldFileName = Path.GetFileName(user.AvatarUrl);
+                    var oldFilePath = Path.Combine(folderPath, oldFileName);
+                    if (System.IO.File.Exists(oldFilePath))
+                        System.IO.File.Delete(oldFilePath);
+                }
+            }
+
+            // --- Lưu file mới ---
+            var newFileName = $"{Guid.NewGuid()}{ext}";
+            var newFilePath = Path.Combine(folderPath, newFileName);
+
+            using (var stream = new FileStream(newFilePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // --- Cập nhật DB ---
+            var urlBaseConfig = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+            user.AvatarUrl = $"{urlBaseConfig}/{newFileName}";
+            user.UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { avatarUrl = user.AvatarUrl });
+        }
+
+>>>>>>> effa0487ce6db84800e14f60c164eaa0641a5ac7
         [HttpPut("{id}/password")]
         public async Task<IActionResult> ChangePassword(int id, ChangePasswordDTO dto)
         {
