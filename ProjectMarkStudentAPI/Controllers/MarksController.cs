@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using ProjectMarkStudentAPI.Constants;
 using ProjectMarkStudentAPI.DTOs;
 using ProjectMarkStudentAPI.Models;
 using System.Security.Claims;
@@ -25,6 +26,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("course/{courseId}/student/{studentId}")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<IEnumerable<MarkDTO>>> GetStudentMarksForCourse(int courseId, int studentId)
         {
             var marks = await _context.Marks
@@ -37,6 +39,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPost("entry")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Teacher)]
         public async Task<IActionResult> EnterMarks([FromBody] MarkEntryDTO dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -71,6 +74,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("teacher/courses")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Teacher)]
         public async Task<ActionResult<IEnumerable<CourseDTO>>> GetTeacherCourses()
         {
             var username = User.FindFirstValue(ClaimTypes.NameIdentifier);

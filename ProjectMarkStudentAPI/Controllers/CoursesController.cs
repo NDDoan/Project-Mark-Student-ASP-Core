@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using ProjectMarkStudentAPI.Constants;
 using ProjectMarkStudentAPI.DTOs;
 using ProjectMarkStudentAPI.Models;
 
@@ -24,6 +25,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<IEnumerable<CourseDTO>>> GetCourses()
         {
             var courses = await _context.Courses.AsNoTracking() // Issue #13
@@ -33,6 +35,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("{id}")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<CourseDTO>> GetCourse(int id)
         {
             var course = await _context.Courses.AsNoTracking() // Issue #13
@@ -42,6 +45,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<ActionResult<CourseDTO>> PostCourse(CourseDTO courseDto)
         {
             var course = _mapper.Map<Course>(courseDto);
@@ -53,6 +57,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<IActionResult> PutCourse(int id, CourseDTO courseDto)
         {
             if (id != courseDto.CourseId) return BadRequest();
@@ -69,6 +74,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> DeleteCourse(int id)
         {
             var course = await _context.Courses.FindAsync(id);
@@ -82,6 +88,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("{id}/students")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<IEnumerable<StudentDTO>>> GetStudentsInCourse(int id)
         {
             var students = await _context.StudentCourses
@@ -95,6 +102,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         // Issue #7: Returns 201 Created instead of 200 OK for POST operations
         [HttpPost("{id}/students")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<IActionResult> AssignStudentToCourse(int id, [FromBody] StudentAssignmentDTO dto)
         {
             if (id != dto.CourseId) return BadRequest();
@@ -110,6 +118,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpDelete("{courseId}/students/{studentId}")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<IActionResult> RemoveStudentFromCourse(int courseId, int studentId)
         {
             var sc = await _context.StudentCourses.FirstOrDefaultAsync(s => s.CourseId == courseId && s.StudentId == studentId);

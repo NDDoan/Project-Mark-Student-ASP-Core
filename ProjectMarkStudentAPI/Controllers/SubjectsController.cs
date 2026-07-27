@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using ProjectMarkStudentAPI.Constants;
 using ProjectMarkStudentAPI.DTOs;
 using ProjectMarkStudentAPI.Models;
 
@@ -24,6 +25,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<IEnumerable<SubjectDTO>>> GetSubjects()
         {
             var subjects = await _context.Subjects.ToListAsync();
@@ -32,6 +34,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("{id}")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<SubjectDTO>> GetSubject(int id)
         {
             var subject = await _context.Subjects.FindAsync(id);
@@ -43,6 +46,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<ActionResult<SubjectDTO>> PostSubject(SubjectDTO subjectDto)
         {
             if (await _context.Subjects.AnyAsync(s => s.SubjectName == subjectDto.SubjectName))
@@ -58,6 +62,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> PutSubject(int id, SubjectDTO subjectDto)
         {
             if (id != subjectDto.SubjectId) return BadRequest();
@@ -72,6 +77,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> DeleteSubject(int id)
         {
             var subject = await _context.Subjects.FindAsync(id);

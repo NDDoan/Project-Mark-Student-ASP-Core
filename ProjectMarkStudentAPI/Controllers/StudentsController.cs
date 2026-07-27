@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using ProjectMarkStudentAPI.Constants;
 using ProjectMarkStudentAPI.DTOs;
 using ProjectMarkStudentAPI.Models;
 
@@ -25,6 +26,7 @@ namespace ProjectMarkStudentAPI.Controllers
         // GET: api/Students (OData enabled)
         [HttpGet]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<IEnumerable<StudentDTO>>> GetStudents()
         {
             var students = await _context.Students.AsNoTracking().ToListAsync(); // Issue #13: AsNoTracking for read-only
@@ -33,6 +35,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("{id}")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<StudentDTO>> GetStudent(int id)
         {
             var student = await _context.Students.FindAsync(id);
@@ -47,6 +50,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         // PUT: api/Students/5
         [HttpPut("{id}")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<IActionResult> PutStudent(int id, StudentDTO studentDTO)
         {
             // Issue #3: Use StudentId (renamed from Id for {Entity}Id consistency)
@@ -87,6 +91,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         // POST: api/Students
         [HttpPost]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<ActionResult<StudentDTO>> PostStudent(StudentDTO studentDTO)
         {
             // [ApiController] already validates ModelState automatically — manual check removed (Issue #10)
@@ -106,6 +111,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         // DELETE: api/Students/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> DeleteStudent(int id)
         {
             var student = await _context.Students.FindAsync(id);
@@ -126,6 +132,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("export")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<IActionResult> ExportStudents()
         {
             var students = await _context.Students.AsNoTracking().ToListAsync();
@@ -162,6 +169,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPost("import")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager)]
         public async Task<IActionResult> ImportStudents(IFormFile file)
         {
             if (file == null || file.Length == 0)

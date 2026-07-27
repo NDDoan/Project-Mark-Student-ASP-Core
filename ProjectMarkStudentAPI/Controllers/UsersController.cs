@@ -28,6 +28,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<ActionResult<IEnumerable<UserDTO>>> GetUsers()
         {
             var users = await _context.Users.Include(u => u.Role)
@@ -38,6 +39,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("{id}")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<ActionResult<UserDTO>> GetUser(int id)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
@@ -50,6 +52,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("me")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<UserDTO>> GetMe()
         {
             var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -62,6 +65,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<ActionResult<UserDTO>> PostUser(CreateUserDTO userDto)
         {
             if (await _context.Users.AnyAsync(u => u.Username == userDto.Username))
@@ -83,6 +87,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<IActionResult> PutUser(int id, UpdateUserDTO userDto)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
@@ -171,6 +176,7 @@ namespace ProjectMarkStudentAPI.Controllers
         /// Trả về: { "avatarUrl": "/assets/pictures/profile/filename.ext" }
         /// </summary>
         [HttpPost("{id}/avatar")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<IActionResult> UploadAvatar(int id, IFormFile file)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
@@ -238,6 +244,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPut("{id}/password")]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<IActionResult> ChangePassword(int id, ChangePasswordDTO dto)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
@@ -271,6 +278,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> DeleteUser(int id)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
@@ -292,6 +300,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPatch("{id}/status")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> ToggleUserStatus(int id)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
@@ -314,6 +323,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("roles")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<ActionResult<IEnumerable<Role>>> GetRoles()
         {
             return await _context.Roles.ToListAsync();

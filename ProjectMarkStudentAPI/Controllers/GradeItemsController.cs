@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using ProjectMarkStudentAPI.Constants;
 using ProjectMarkStudentAPI.DTOs;
 using ProjectMarkStudentAPI.Models;
 
@@ -24,6 +25,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("subject/{subjectId}")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<IEnumerable<GradeItemDTO>>> GetBySubject(int subjectId)
         {
             var items = await _context.GradeItems.AsNoTracking() // Issue #13: AsNoTracking for read-only
@@ -33,6 +35,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         [HttpGet("{id}")]
         [EnableQuery]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.Manager + "," + RoleNames.Teacher)]
         public async Task<ActionResult<GradeItemDTO>> GetGradeItem(int id)
         {
             var gradeItem = await _context.GradeItems.AsNoTracking().FirstOrDefaultAsync(g => g.GradeItemId == id);
@@ -42,6 +45,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
         // Issue #6: Returns 201 Created with Location header instead of 200 OK
         [HttpPost]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<ActionResult<GradeItemDTO>> PostGradeItem(GradeItemDTO dto)
         {
             var gradeItem = _mapper.Map<GradeItem>(dto);
@@ -51,6 +55,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> PutGradeItem(int id, GradeItemDTO dto)
         {
             if (id != dto.GradeItemId) return BadRequest();
@@ -65,6 +70,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = RoleNames.Admin)]
         public async Task<IActionResult> DeleteGradeItem(int id)
         {
             var gradeItem = await _context.GradeItems.FindAsync(id);
