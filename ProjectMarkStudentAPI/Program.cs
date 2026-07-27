@@ -18,12 +18,11 @@ builder.Services.AddDbContext<ProjectStudentMarkContext>(options =>
 // 2. Add AutoMapper (v15 API: cfg action must come first, then marker types)
 builder.Services.AddAutoMapper(cfg => { }, typeof(AutoMapperProfile));
 
-// 3. Add Controllers with OData and XML Content Negotiation
-builder.Services.AddControllers(options =>
-{
-    options.ReturnHttpNotAcceptable = true; // Content Negotiation
-}).AddXmlSerializerFormatters()
+// 3. Add Controllers with OData
+builder.Services.AddControllers()
+  .AddXmlSerializerFormatters()
   .AddOData(options => options.Select().Filter().OrderBy().Expand().Count().SetMaxTop(100));
+
 
 // 4. Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"];

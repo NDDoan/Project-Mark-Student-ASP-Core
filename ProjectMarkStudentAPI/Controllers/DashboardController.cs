@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using ProjectMarkStudentAPI.Models;
 
@@ -18,6 +19,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("average-scores")]
+        [EnableQuery]
         public async Task<IActionResult> GetAverageScorePerSubject()
         {
             // Fetch all needed data to client first to avoid EF Core translation issues
@@ -49,6 +51,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("score-distribution")]
+        [EnableQuery]
         public async Task<IActionResult> GetScoreDistribution()
         {
             var marks = await _context.Marks.Select(m => m.Value).ToListAsync();
@@ -65,6 +68,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("enrollments")]
+        [EnableQuery]
         public async Task<IActionResult> GetEnrollmentPerSubject()
         {
             var result = await _context.Subjects

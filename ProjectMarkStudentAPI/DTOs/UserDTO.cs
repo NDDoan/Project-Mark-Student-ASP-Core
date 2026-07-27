@@ -47,7 +47,7 @@ namespace ProjectMarkStudentAPI.DTOs
         [StringLength(20)]
         public string? PhoneNumber { get; set; }
 
-        [StringLength(255)]
+        [StringLength(500)]
         public string? AvatarUrl { get; set; }
         
         [StringLength(255)]
@@ -73,7 +73,7 @@ namespace ProjectMarkStudentAPI.DTOs
         [StringLength(20)]
         public string? PhoneNumber { get; set; }
 
-        [StringLength(255)]
+        [StringLength(500)]
         public string? AvatarUrl { get; set; }
         
         [StringLength(255)]

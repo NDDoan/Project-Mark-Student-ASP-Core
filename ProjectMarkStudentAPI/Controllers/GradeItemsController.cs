@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using ProjectMarkStudentAPI.DTOs;
 using ProjectMarkStudentAPI.Models;
@@ -22,6 +23,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("subject/{subjectId}")]
+        [EnableQuery]
         public async Task<ActionResult<IEnumerable<GradeItemDTO>>> GetBySubject(int subjectId)
         {
             var items = await _context.GradeItems.AsNoTracking() // Issue #13: AsNoTracking for read-only
@@ -29,8 +31,8 @@ namespace ProjectMarkStudentAPI.Controllers
             return Ok(_mapper.Map<IEnumerable<GradeItemDTO>>(items));
         }
 
-        // Issue #8: Added GET /{id} so that CreatedAtAction in PostGradeItem works
         [HttpGet("{id}")]
+        [EnableQuery]
         public async Task<ActionResult<GradeItemDTO>> GetGradeItem(int id)
         {
             var gradeItem = await _context.GradeItems.AsNoTracking().FirstOrDefaultAsync(g => g.GradeItemId == id);

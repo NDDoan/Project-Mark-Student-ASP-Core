@@ -35,6 +35,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [EnableQuery]
         public async Task<ActionResult<UserDTO>> GetUser(int id)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
@@ -46,6 +47,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("me")]
+        [EnableQuery]
         public async Task<ActionResult<UserDTO>> GetMe()
         {
             var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -161,6 +163,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("roles")]
+        [EnableQuery]
         public async Task<ActionResult<IEnumerable<Role>>> GetRoles()
         {
             return await _context.Roles.ToListAsync();

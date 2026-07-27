@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using ProjectMarkStudentAPI.DTOs;
 using ProjectMarkStudentAPI.Models;
@@ -22,8 +23,8 @@ namespace ProjectMarkStudentAPI.Controllers
             _mapper = mapper;
         }
 
-        // Issue #4: Returns MarkDTO instead of raw Mark entity
         [HttpGet("course/{courseId}/student/{studentId}")]
+        [EnableQuery]
         public async Task<ActionResult<IEnumerable<MarkDTO>>> GetStudentMarksForCourse(int courseId, int studentId)
         {
             var marks = await _context.Marks
@@ -68,8 +69,8 @@ namespace ProjectMarkStudentAPI.Controllers
             return Ok();
         }
 
-        // Issue #5: Uses injected _mapper instead of HttpContext.RequestServices.GetService<IMapper>()
         [HttpGet("teacher/courses")]
+        [EnableQuery]
         public async Task<ActionResult<IEnumerable<CourseDTO>>> GetTeacherCourses()
         {
             var username = User.FindFirstValue(ClaimTypes.NameIdentifier);

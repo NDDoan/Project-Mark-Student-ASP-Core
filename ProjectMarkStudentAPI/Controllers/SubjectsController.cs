@@ -31,6 +31,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [EnableQuery]
         public async Task<ActionResult<SubjectDTO>> GetSubject(int id)
         {
             var subject = await _context.Subjects.FindAsync(id);

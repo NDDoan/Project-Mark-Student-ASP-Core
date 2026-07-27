@@ -31,8 +31,8 @@ namespace ProjectMarkStudentAPI.Controllers
             return Ok(_mapper.Map<IEnumerable<StudentDTO>>(students));
         }
 
-        // GET: api/Students/5
         [HttpGet("{id}")]
+        [EnableQuery]
         public async Task<ActionResult<StudentDTO>> GetStudent(int id)
         {
             var student = await _context.Students.FindAsync(id);

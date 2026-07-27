@@ -32,6 +32,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [EnableQuery]
         public async Task<ActionResult<CourseDTO>> GetCourse(int id)
         {
             var course = await _context.Courses.AsNoTracking() // Issue #13
@@ -80,6 +81,7 @@ namespace ProjectMarkStudentAPI.Controllers
         }
 
         [HttpGet("{id}/students")]
+        [EnableQuery]
         public async Task<ActionResult<IEnumerable<StudentDTO>>> GetStudentsInCourse(int id)
         {
             var students = await _context.StudentCourses
