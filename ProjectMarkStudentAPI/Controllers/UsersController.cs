@@ -17,11 +17,13 @@ namespace ProjectMarkStudentAPI.Controllers
     {
         private readonly ProjectStudentMarkContext _context;
         private readonly IMapper _mapper;
+        private readonly IConfiguration _configuration;
 
-        public UsersController(ProjectStudentMarkContext context, IMapper mapper)
+        public UsersController(ProjectStudentMarkContext context, IMapper mapper, IConfiguration configuration)
         {
             _context = context;
             _mapper = mapper;
+            _configuration = configuration;
         }
 
         [HttpGet]
@@ -105,14 +107,13 @@ namespace ProjectMarkStudentAPI.Controllers
             user.Address = userDto.Address;
             user.Gender = userDto.Gender;
             user.RoleId = userDto.RoleId;
+            user.Status = userDto.Status;
             user.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-<<<<<<< HEAD
-=======
         /// <summary>
         /// Kiểm tra nếu <paramref name="newUrl"/> là đường dẫn file local tồn tại trên disk
         /// thì copy vào thư mục assets của WebClient và trả về URL chuẩn.
@@ -235,7 +236,6 @@ namespace ProjectMarkStudentAPI.Controllers
             return Ok(new { avatarUrl = user.AvatarUrl });
         }
 
->>>>>>> effa0487ce6db84800e14f60c164eaa0641a5ac7
         [HttpPut("{id}/password")]
         public async Task<IActionResult> ChangePassword(int id, ChangePasswordDTO dto)
         {

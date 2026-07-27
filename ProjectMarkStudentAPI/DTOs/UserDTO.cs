@@ -24,6 +24,8 @@ namespace ProjectMarkStudentAPI.DTOs
         public int RoleId { get; set; }
 
         public string? RoleName { get; set; }
+
+        public bool Status { get; set; }
     }
 
     public class CreateUserDTO
@@ -58,6 +60,8 @@ namespace ProjectMarkStudentAPI.DTOs
 
         [Required]
         public int RoleId { get; set; }
+
+        public bool Status { get; set; }
     }
 
     public class UpdateUserDTO
@@ -84,6 +88,8 @@ namespace ProjectMarkStudentAPI.DTOs
 
         [Required]
         public int RoleId { get; set; }
+
+        public bool Status { get; set; }
     }
 
     public class ChangePasswordDTO
