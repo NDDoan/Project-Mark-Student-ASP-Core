@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 1. Add DbContext
 builder.Services.AddDbContext<ProjectStudentMarkContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn_Local")));
 
 // 2. Add AutoMapper (v15 API: cfg action must come first, then marker types)
 builder.Services.AddAutoMapper(cfg => { }, typeof(AutoMapperProfile));
