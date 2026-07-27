@@ -46,6 +46,11 @@ namespace ProjectMarkStudentAPI.Controllers
                 return Unauthorized(new { message = "Invalid username or password" });
             }
 
+            if (!user.Status)
+            {
+                return Unauthorized(new { message = "Xin lỗi, tài khoản của bạn bị vô hiệu hóa." });
+            }
+
             var token = GenerateJwtToken(user);
 
             return Ok(new { token = token });

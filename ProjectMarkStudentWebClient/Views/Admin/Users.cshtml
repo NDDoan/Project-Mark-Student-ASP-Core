@@ -3,6 +3,64 @@
     Layout = "_DashboardLayout";
 }
 
+<style>
+    /* Status badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    .status-active   { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
+    .status-inactive { background: rgba(239,68,68,0.12);  color: #fca5a5; border: 1px solid rgba(239,68,68,0.22); }
+
+    /* Toggle button */
+    .btn-toggle-on {
+        padding: 5px 12px;
+        background: rgba(16,185,129,0.1);
+        border: 1px solid rgba(16,185,129,0.25);
+        border-radius: 8px;
+        color: #6ee7b7;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+    .btn-toggle-on:hover {
+        background: rgba(16,185,129,0.22);
+        border-color: rgba(16,185,129,0.45);
+    }
+    .btn-toggle-off {
+        padding: 5px 12px;
+        background: rgba(239,68,68,0.1);
+        border: 1px solid rgba(239,68,68,0.25);
+        border-radius: 8px;
+        color: #f87171;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+    .btn-toggle-off:hover {
+        background: rgba(239,68,68,0.2);
+        border-color: rgba(239,68,68,0.4);
+    }
+
+    /* Row dimmed when inactive */
+    tr.row-inactive td {
+        opacity: 0.55;
+    }
+    tr.row-inactive td:last-child {
+        opacity: 1;
+    }
+</style>
+
 <!-- Page Header -->
 <div class="page-header">
     <div class="page-greeting">Quản trị hệ thống</div>
@@ -12,6 +70,10 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div style="font-size: 0.85rem; color: rgba(255,255,255,0.4);">
         Tổng số: <span id="user-count" style="font-weight: 700; color: #a5b4fc;">0</span> người dùng
+        &nbsp;·&nbsp;
+        Hoạt động: <span id="user-active-count" style="font-weight: 700; color: #6ee7b7;">0</span>
+        &nbsp;·&nbsp;
+        Vô hiệu hóa: <span id="user-inactive-count" style="font-weight: 700; color: #f87171;">0</span>
     </div>
     <button class="btn-add" onclick="showUserModal()">
         <span>＋</span> Thêm User
@@ -26,6 +88,7 @@
                 <th>Họ tên</th>
                 <th>SĐT</th>
                 <th>Vai trò</th>
+                <th>Trạng thái</th>
                 <th style="text-align: right;">Thao tác</th>
             </tr>
         </thead>
@@ -46,16 +109,38 @@
         return `<span class="role-tag role-tag-default">${roleName}</span>`;
     }
 
+    function getStatusBadge(status) {
+        return status
+            ? `<span class="status-badge status-active">✅ Hoạt động</span>`
+            : `<span class="status-badge status-inactive">🚫 Vô hiệu</span>`;
+    }
+
+    function getToggleBtn(userId, status) {
+        return status
+            ? `<button class="btn-toggle-off" onclick="toggleStatus(${userId}, false)" title="Vô hiệu hóa tài khoản">🚫 Vô hiệu hóa</button>`
+            : `<button class="btn-toggle-on"  onclick="toggleStatus(${userId}, true)"  title="Kích hoạt lại tài khoản">✅ Kích hoạt</button>`;
+    }
+
     function loadUsers() {
         apiCall("GET", "/Users", null, function (data) {
             const tbody = $("#user-table-body");
             tbody.empty();
-            $("#user-count").text(data.length);
+
+            const total    = data.length;
+            const active   = data.filter(u => u.status).length;
+            const inactive = total - active;
+
+            $("#user-count").text(total);
+            $("#user-active-count").text(active);
+            $("#user-inactive-count").text(inactive);
+
             data.forEach(u => {
-                const initial = u.firstName ? u.firstName.charAt(0).toUpperCase() : (u.username ? u.username.charAt(0).toUpperCase() : 'U');
-                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=6366f1&color=fff&size=40&rounded=true`;
+                const initial    = u.firstName ? u.firstName.charAt(0).toUpperCase() : (u.username ? u.username.charAt(0).toUpperCase() : 'U');
+                const avatarUrl  = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=6366f1&color=fff&size=40&rounded=true`;
+                const rowClass   = u.status ? '' : 'row-inactive';
+
                 tbody.append(`
-                    <tr>
+                    <tr class="${rowClass}" id="user-row-${u.userId}">
                         <td>
                             <div style="display:flex; align-items:center; gap:10px;">
                                 <img src="${avatarUrl}" style="width:32px;height:32px;border-radius:8px;border:1px solid rgba(99,102,241,0.3);" />
@@ -65,8 +150,9 @@
                         <td>${(u.lastName || '') + ' ' + (u.firstName || '')}</td>
                         <td style="color:rgba(255,255,255,0.5);">${u.phoneNumber || '—'}</td>
                         <td>${getRoleTag(u.roleName)}</td>
-                        <td style="text-align: right;">
-                            <button class="btn-delete" onclick="deleteUser(${u.userId})">🗑 Xoá</button>
+                        <td id="status-cell-${u.userId}">${getStatusBadge(u.status)}</td>
+                        <td style="text-align: right;" id="action-cell-${u.userId}">
+                            ${getToggleBtn(u.userId, u.status)}
                         </td>
                     </tr>
                 `);
@@ -74,23 +160,58 @@
         });
     }
 
-    function deleteUser(id) {
-        if (confirm("Bạn có chắc muốn xoá người dùng này?")) {
-            apiCall("DELETE", `/Users/${id}`, null, loadUsers);
-        }
+    function toggleStatus(userId, currentStatus) {
+        const msg = currentStatus
+            ? `Bạn có chắc muốn kích hoạt lại tài khoản này?`
+            : `Bạn có chắc muốn vô hiệu hóa tài khoản này?\nTài khoản sẽ bị chặn đăng nhập ngay lập tức.`;
+
+        if (!confirm(msg)) return;
+
+        apiCall("PATCH", `/Users/${userId}/status`, null, function (res) {
+            const newStatus = res.status;
+            // Cập nhật UI tại chỗ, không cần reload toàn bảng
+            $(`#status-cell-${userId}`).html(getStatusBadge(newStatus));
+            $(`#action-cell-${userId}`).html(getToggleBtn(userId, newStatus));
+
+            const row = $(`#user-row-${userId}`);
+            if (newStatus) {
+                row.removeClass('row-inactive');
+            } else {
+                row.addClass('row-inactive');
+            }
+
+            // Cập nhật counter
+            const active   = $('tbody .status-active').length;
+            const total    = $('tbody tr').length;
+            const inactive = total - active;
+            $("#user-active-count").text(active);
+            $("#user-inactive-count").text(inactive);
+        });
     }
 
-    function showUserModal() { $("#userModal").modal("show"); }
+    function showUserModal() {
+        // Reset form
+        $("#m-username, #m-firstName, #m-lastName, #m-phoneNumber, #m-password").val('');
+        $("#m-roleId").val('2');
+        $("#userModal").modal("show");
+    }
 
     function saveUser() {
         const data = {
-            username:    $("#m-username").val(),
-            firstName:   $("#m-firstName").val(),
-            lastName:    $("#m-lastName").val(),
-            phoneNumber: $("#m-phoneNumber").val(),
+            username:    $("#m-username").val().trim(),
+            firstName:   $("#m-firstName").val().trim(),
+            lastName:    $("#m-lastName").val().trim(),
+            phoneNumber: $("#m-phoneNumber").val().trim(),
             roleId:      parseInt($("#m-roleId").val()),
-            password:    $("#m-password").val()
+            password:    $("#m-password").val(),
+            status:      true   // Mặc định kích hoạt khi tạo mới
         };
+
+        if (!data.username || !data.firstName || !data.lastName || !data.password) {
+            alert("Vui lòng điền đầy đủ các trường bắt buộc.");
+            return;
+        }
+
         apiCall("POST", "/Users", data, function () {
             $("#userModal").modal("hide");
             loadUsers();
@@ -110,15 +231,15 @@
             <div class="modal-body premium-body">
                 <div class="row g-3">
                     <div class="col-12">
-                        <label class="form-label-premium">Tài khoản</label>
+                        <label class="form-label-premium">Tài khoản <span style="color:#f87171;">*</span></label>
                         <input type="text" id="m-username" class="form-control-premium" placeholder="Nhập username" />
                     </div>
                     <div class="col-6">
-                        <label class="form-label-premium">Họ</label>
+                        <label class="form-label-premium">Họ <span style="color:#f87171;">*</span></label>
                         <input type="text" id="m-lastName" class="form-control-premium" placeholder="Nguyễn" />
                     </div>
                     <div class="col-6">
-                        <label class="form-label-premium">Tên</label>
+                        <label class="form-label-premium">Tên <span style="color:#f87171;">*</span></label>
                         <input type="text" id="m-firstName" class="form-control-premium" placeholder="Văn A" />
                     </div>
                     <div class="col-12">
@@ -129,12 +250,12 @@
                         <label class="form-label-premium">Vai trò</label>
                         <select id="m-roleId" class="form-select-premium">
                             <option value="1">👑 Admin</option>
-                            <option value="2">👔 Quản lý</option>
+                            <option value="2" selected>👔 Quản lý</option>
                             <option value="3">📚 Giáo viên</option>
                         </select>
                     </div>
                     <div class="col-12">
-                        <label class="form-label-premium">Mật khẩu</label>
+                        <label class="form-label-premium">Mật khẩu <span style="color:#f87171;">*</span></label>
                         <input type="password" id="m-password" class="form-control-premium" placeholder="••••••••" />
                     </div>
                 </div>

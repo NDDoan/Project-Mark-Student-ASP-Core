@@ -71,6 +71,7 @@ namespace ProjectMarkStudentAPI.Controllers
 
             var user = _mapper.Map<User>(userDto);
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDto.Password);
+            user.Status = true; // Tài khoản mới được kích hoạt mặc định
             user.CreatedAt = DateTime.Now;
             user.UpdatedAt = DateTime.Now;
 
@@ -107,7 +108,7 @@ namespace ProjectMarkStudentAPI.Controllers
             user.Address = userDto.Address;
             user.Gender = userDto.Gender;
             user.RoleId = userDto.RoleId;
-            user.Status = userDto.Status;
+            // Status KHÔNG được thay đổi qua PUT — dùng PATCH /{id}/status
             user.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
@@ -280,12 +281,35 @@ namespace ProjectMarkStudentAPI.Controllers
 
             if (user.Role?.RoleName == RoleNames.Admin)
             {
-                return BadRequest("Không thể xóa tài khoản Admin.");
+                return BadRequest("Không thể vô hiệu hóa tài khoản Admin.");
             }
 
-            _context.Users.Remove(user);
+            // Thay vì xóa, chỉ vô hiệu hóa tài khoản
+            user.Status = false;
+            user.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> ToggleUserStatus(int id)
+        {
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            if (user.Role?.RoleName == RoleNames.Admin)
+            {
+                return BadRequest("Không thể thay đổi trạng thái tài khoản Admin.");
+            }
+
+            user.Status = !user.Status;
+            user.UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { userId = user.UserId, status = user.Status });
         }
 
         [HttpGet("roles")]

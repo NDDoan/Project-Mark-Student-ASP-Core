@@ -409,8 +409,14 @@
             error: function (xhr) {
                 $btn.prop("disabled", false).text("Đăng nhập");
                 if (xhr.status === 0) showError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối.");
-                else if (xhr.status === 401 || xhr.status === 400) showError("Sai tài khoản hoặc mật khẩu.");
-                else showError("Đã xảy ra lỗi: " + xhr.statusText);
+                else if (xhr.status === 401 || xhr.status === 400) {
+                    let errMsg = "Sai tài khoản hoặc mật khẩu.";
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    showError(errMsg);
+                }
+                else showError("Đã xảy ra lỗi: " + (xhr.responseJSON?.message || xhr.statusText));
             }
         });
     }

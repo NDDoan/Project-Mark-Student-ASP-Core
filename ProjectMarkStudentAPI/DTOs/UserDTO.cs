@@ -88,8 +88,6 @@ namespace ProjectMarkStudentAPI.DTOs
 
         [Required]
         public int RoleId { get; set; }
-
-        public bool Status { get; set; }
     }
 
     public class ChangePasswordDTO
