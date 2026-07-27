@@ -102,7 +102,8 @@ namespace ProjectMarkStudentAPI.Controllers
             user.FirstName = userDto.FirstName;
             user.LastName = userDto.LastName;
             user.PhoneNumber = userDto.PhoneNumber;
-            user.AvatarUrl = userDto.AvatarUrl;
+            // Nếu AvatarUrl là đường dẫn file local thì copy vào assets và đổi thành URL chuẩn
+            user.AvatarUrl = ResolveAvatarUrl(userDto.AvatarUrl, user.AvatarUrl);
             user.Address = userDto.Address;
             user.Gender = userDto.Gender;
             user.RoleId = userDto.RoleId;
@@ -111,6 +112,56 @@ namespace ProjectMarkStudentAPI.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        /// <summary>
+        /// Kiểm tra nếu <paramref name="newUrl"/> là đường dẫn file local tồn tại trên disk
+        /// thì copy vào thư mục assets của WebClient và trả về URL chuẩn.
+        /// Nếu đã là URL web (bắt đầu bằng / hoặc http) thì giữ nguyên.
+        /// </summary>
+        private string? ResolveAvatarUrl(string? newUrl, string? oldUrl)
+        {
+            if (string.IsNullOrWhiteSpace(newUrl))
+                return newUrl;
+
+            // Đã là URL web — không cần xử lý thêm
+            if (newUrl.StartsWith("/") || newUrl.StartsWith("http://") || newUrl.StartsWith("https://"))
+                return newUrl;
+
+            // Không phải đường dẫn local hợp lệ — giữ nguyên
+            if (!Path.IsPathRooted(newUrl) || !System.IO.File.Exists(newUrl))
+                return newUrl;
+
+            // --- Đây là đường dẫn file local: copy vào assets ---
+            var configuredPath = _configuration["AvatarStorage:PhysicalPath"];
+            var folderPath = Path.IsPathRooted(configuredPath!)
+                ? configuredPath!
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, configuredPath!));
+
+            Directory.CreateDirectory(folderPath);
+
+            // Xóa avatar cũ (nếu cùng thư mục quản lý)
+            if (!string.IsNullOrEmpty(oldUrl))
+            {
+                var urlBase = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+                if (oldUrl.StartsWith(urlBase))
+                {
+                    var oldFileName = Path.GetFileName(oldUrl);
+                    var oldFilePath = Path.Combine(folderPath, oldFileName);
+                    if (System.IO.File.Exists(oldFilePath))
+                        System.IO.File.Delete(oldFilePath);
+                }
+            }
+
+            var ext = Path.GetExtension(newUrl).ToLowerInvariant();
+            var newFileName = $"{Guid.NewGuid()}{ext}";
+            var destPath = Path.Combine(folderPath, newFileName);
+
+            System.IO.File.Copy(newUrl, destPath, overwrite: true);
+
+            var urlBaseConfig = _configuration["AvatarStorage:UrlBase"] ?? "/assets/pictures/profile";
+            return $"{urlBaseConfig}/{newFileName}";
+        }
+
 
         /// <summary>
         /// Upload ảnh đại diện cho user, lưu vào wwwroot/assets/pictures/profile của WebClient.
